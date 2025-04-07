@@ -1,24 +1,48 @@
-This is free and unencumbered software released into the public domain.
+Daniel C. Fox’s Read Only License (ROL) 1.0
+Daniel C. Fox is the sole owner of all content, including software, on this site.
+Copyright © 2025 Daniel C. Fox. All rights reserved.
 
-Anyone is free to copy, modify, publish, use, compile, sell, or
-distribute this software, either in source code form or as a compiled
-binary, for any purpose, commercial or non-commercial, and by any
-means.
+Permission is hereby granted, free of charge, to any person obtaining a copy of 
+this software and its associated documentation (the “Software”) solely for the 
+purpose of viewing and assessing its content. This license permits you to browse 
+and read the source code and accompanying documentation only.
 
-In jurisdictions that recognize copyright laws, the author or authors
-of this software dedicate any and all copyright interest in the
-software to the public domain. We make this dedication for the benefit
-of the public at large and to the detriment of our heirs and
-successors. We intend this dedication to be an overt act of
-relinquishment in perpetuity of all present and future rights to this
-software under copyright law.
+The ROL is a license that allows others to view software on this site for 
+informational purposes only. The license is organized into two simple lists of 
+things users can do, and cannot do, with the software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
-OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
+I. DEFINITIONS
+“software” refers to any files on this site that include source code, object code, 
+libraries, and build files (e.g., makefiles) for creating object code that 
+references the source code and the libraries.
+“user” is any party, human or non-human, other than owner Daniel C. Fox.
+“non-human user” is an automated process, application, or device that accesses 
+data or performs actions within a system without direct human intervention.
 
-For more information, please refer to <https://unlicense.org>
+II. RIGHTS OF USERS
+A. USERS CAN:
+•	View / inspect the software 
+B. USERS CANNOT:
+•	Make copies of the software
+•	Include any portions of the software in your programs, for either personal or 
+commercial use
+•	link their programs (e.g., statically or dynamically) to the software, or 
+execute the software
+•	Download or save copies of the software, or any portions of the software, 
+to any medium (e.g., local disk drive, thumb drive, cloud share)
+•	Make changes to or otherwise modify the software
+•	Redistribute the software in any form, such as uploading to the internet 
+or offering the software for sale
+•	Take screen captures of the software
+•	Print the software onto a physical medium such as paper
+•	Provide the software or any portions of the software as input to a non-human 
+user or to a machine learning program or algorithm
+•	Provide the software or any portions of the software for purposes of training 
+a non-human user or a machine learning program or algorithm
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,FITNESS FOR A 
+PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION 
+OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM,OUT OF, OR IN CONNECTION WITH THE 
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
