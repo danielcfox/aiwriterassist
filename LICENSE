@@ -1,5 +1,6 @@
 Daniel C. Fox’s Read Only License (ROL) 1.0
-Daniel C. Fox is the sole owner of all content, including software, on this site.
+Daniel C. Fox is the sole owner of all content, including software, in this 
+repository (github.com/danielcfox/aiwriterassist) on this site.
 Copyright © 2025 Daniel C. Fox. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of 
@@ -7,14 +8,15 @@ this software and its associated documentation (the “Software”) solely for t
 purpose of viewing and assessing its content. This license permits you to browse 
 and read the source code and accompanying documentation only.
 
-The ROL is a license that allows others to view software on this site for 
-informational purposes only. The license is organized into two simple lists of 
-things users can do, and cannot do, with the software.
+The ROL is a license that allows others to view software in this repository 
+(github.com/danielcfox/aiwriterassist) on this site for informational purposes 
+only. The license is organized into two simple lists of things users can do, and 
+cannot do, with the software.
 
 I. DEFINITIONS
-“software” refers to any files on this site that include source code, object code, 
-libraries, and build files (e.g., makefiles) for creating object code that 
-references the source code and the libraries.
+“software” refers to any files on this site that include source code, object 
+code,  libraries, and build files (e.g., makefiles) for creating object code 
+that references the source code and the libraries.
 “user” is any party, human or non-human, other than owner Daniel C. Fox.
 “non-human user” is an automated process, application, or device that accesses 
 data or performs actions within a system without direct human intervention.
