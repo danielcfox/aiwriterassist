@@ -1,0 +1,94 @@
+run_narrative_preprocess: false
+run_corpus_llm_fine_tuning: false
+check_corpus_llm_fine_tuning: false
+run_narrative_scenes_llm_preprocess: false
+run_narrative_into_vector_db: false
+run_narrative_scenes_build_test_set: false
+run_compose_scenes: true
+
+models:
+    gpt_4o_mini_api:
+        api_class: LLMOpenAIAPIHandler
+        max_tokens:
+            input: 111616
+            output: 16384
+        inference:
+            name: "gpt-4o-mini"
+        fine_tune:
+            name: "gpt-4o-mini-2024-07-18"
+            method: "api"
+            ext: "pkl"
+    # Llama3_8B_4b:
+    # unsupported for now
+    #     name: "meta-llama/Meta-Llama-3-8B-Instruct-4bit"
+    #     max_tokens:
+    #         input: 3192
+    #         output: 5000
+    #     fine_tune:
+    #         method: "local"
+    #         ext: "pt"
+
+vector_db_filename: "../../db/narrative_vector_db.db"
+
+users:
+    dcpfox:
+        author_name: "D.C.P. Fox"
+        narratives_directory: "../../narratives/dcpfox"
+        working_directory:  "../../output/dcpfox"
+        preprocess:
+            class: NarrativePreprocessDCPFox
+            corpus_narrative_list:
+                - Narrative_dcpfox_ZombieApocalypse
+                # - Narrative_dcpfox_Fate
+            train_split: 0.9
+            output_file_train_template: "{narrative}_train.json"
+            output_file_eval_template: "{narrative}_eval.json"
+        fine_tune:
+            model: gpt_4o_mini_api
+            output_file_template: "{user}_{model}.{fine_tune_ext}"
+            maxwait: 3600 # number of seconds to wait for the fine-tuning job to complete, 0 (default) means no wait
+            # regardless, after the maxwait time, the user muse periodically check the status of the fine-tuning job
+        narrative_scenes_llm_preprocess:
+            clean: true
+            model: gpt_4o_mini_api
+            # scene_limit_per_narrative: 5 # for debugging
+            summaries_to_date: false # default true, set to false if you're planning on running summaries_llm_preprocess
+            # input_directory: "/Users/dfox/DanWriting/Current/Narratives"
+            # output_directory: "/Users/dfox/DanWriting/Current/Narratives"
+            output_file_train_template: "{narrative}_llm_scenes_train.json"
+            output_file_eval_template: "{narrative}_llm_scenes_eval.json"
+        narrative_into_vector_db:
+            # input files are all the output files from narrative_scenes_llm_preprocess
+            clean: true
+            # input_directory: "/Users/dfox/DanWriting/Current/Narratives"
+            # output_directory: "/Users/dfox/DanWriting/Current/Narratives"
+            # output_file_template: "{user}_{narrative}_vector_db.db"
+        narrative_scenes_build_test_set:
+            # input files are all the output files from narrative_scenes_llm_preprocess
+            # input_directory: "/Users/dfox/DanWriting/Current/Narratives"
+            # output_directory: "/Users/dfox/DanWriting/Current/Narratives"
+            output_file_template: "{narrative}_scenes_to_compose.json"
+        compose_scene_llm_handler:
+            # input files are all the output files from narrative_scenes_llm_preprocess
+            model: gpt_4o_mini_api
+            test: true # default false
+            scene_limit_per_narrative: 1 # for debugging
+            recent_event_count: 20 # number of recent events to include in the prompt        
+            # input_directory: "/Users/dfox/DanWriting/Current/Narratives"
+            # output_directory: "/Users/dfox/DanWriting/Current/Narratives"
+            input_file_compose_template: "{narrative}_scenes_to_compose.json"
+            output_file_compose_template: "{narrative}_scenes_composed.json"
+
+Narrative_dcpfox_ZombieApocalypse:
+    class: NarrativePreprocessDCPFoxZombieApocalypse
+    input_files:
+        - "TheSwordOfSaintMichael.txt"
+        - "TheElixirOfDaath.txt"
+        - "TheCultOfApep.txt"
+
+Narrative_dcpfox_Fate:
+    class: NarrativePreprocessDCPFoxFate
+    input_files:
+        - "TheOsirisFacility.txt"
+        - "GhostSeer.txt"
+        - "ThothsMagick.txt"
