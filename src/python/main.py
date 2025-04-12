@@ -32,22 +32,43 @@ LLM_MODELS = {'gpt-4o-mini':
               #      'max_tokens': 8192}
               }
 
-def open_api_object(config, model_id, use_fine_tuned_model=None):
+def open_api_object(config, model_id, model_spec: str, model_filename: str = None):
     """
-    Create an API object for the specified model name.
+    Create an API object for the specified model.
     :param type Config, config: The configuration object.
-    :param type str, model_id: The model identifier.
-    :param type str, use_fine_tuned_model: The name of the fine-tuned model to use (optional).
+    :param type str, model_id: The model ID to use.
+    :param type str, model_spec: Specifies the type of the model argument.
+                         Options are 'openai_details_filename' or 'model_name'.
+                         - 'details_filename': Indicates that the model argument is a filename
+                             containing the object details of a fine-tuned model.
+                         - 'model_name': Indicates that the model argument is the name of the model
+                             available through the GPT-4o API.
+    :param type str, model: The model to use.
     :raises ValueError: If the model class name specified in the configuration file does not exist.
-     :return: An instance of the API class for the specified model.
+    :return: An instance of the API class for the specified model.
     """
     api_class_name = config.get_model_class(model_id)
     api_class = globals()[api_class_name]
-    if use_fine_tuned_model is None:
-        model_name = config.get_model_inference_name(model_id)
+    if config.verbose:
+        print(f"model_spec {model_spec}")
+    if model_spec == 'inference':
+        model = config.get_model_inference_name(model_id)
+        model_spec = 'model_name'
+    elif model_spec == 'fine_tune':
+        model = config.get_model_fine_tune_name(model_id)
+        model_spec = 'model_name'
+    elif model_spec == 'details_filename':
+        model = model_filename
     else:
-        model_name = use_fine_tuned_model
-    return api_class(model_name)
+        raise ValueError(f"Invalid model_spec '{model_spec}'. Must be 'openai_details_filename', 'model_name', or 'fine_tune.")
+
+    # if use_fine_tuned_model is None:
+    #     model_name = config.get_model_inference_name(model_id)
+    #     model_spec = 'model_name'
+    # else:
+    #     model_name = use_fine_tuned_model
+    #     model_spec = 'openai_details_filename'
+    return api_class(model_spec, model, verbose=config.verbose)
 
 def module_narrative_preprocess(config, user, narrative):
     """Preprocess the narrative data for the given user and narrative.
@@ -59,12 +80,13 @@ def module_narrative_preprocess(config, user, narrative):
     output_train_filename = config.get_user_narrative_preprocess_output_train_filename(user, narrative)
     output_eval_filename = config.get_user_narrative_preprocess_output_eval_filename(user, narrative)
     train_split = config.get_user_preprocess_fine_tune_train_split(user)
+    scene_limit = config.get_user_preprocess_scene_limit(user)
 
     npp_class_name = config.get_narrative_class(narrative)
     globals_dict = globals()
     if npp_class_name in globals_dict:
         npp_class = globals_dict[npp_class_name]
-        nppc = npp_class(input_filename_list, output_train_filename, output_eval_filename, train_split) # clean
+        nppc = npp_class(input_filename_list, output_train_filename, output_eval_filename, train_split, scene_limit) # clean
         nppc.process()
         # nppc.dump()
     else:
@@ -83,12 +105,15 @@ def module_narrative_scenes_llm_preprocess(config, user, narrative):
     eval_output_file = config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative)
 
     model_id = config.get_user_narrative_scenes_llm_preprocess_model_id(user)
+    model_name = config.get_model_inference_name(model_id)
     clean = config.get_user_narrative_scenes_llm_preprocess_clean(user)
     author_name = config.get_user_author_name(user)
+    max_input_tokens = config.get_model_max_input_tokens(model_id)
+    max_output_tokens = config.get_model_max_output_tokens(model_id)
 
-    api_obj = open_api_object(config, model_id)
+    api_obj = open_api_object(config, model_id, 'inference')
     llmp = LLMNarrativeScenesPreprocessing(clean, user, narrative, author_name, api_obj, train_input_file, eval_input_file, 
-                                           train_output_file, eval_output_file)
+                                           train_output_file, eval_output_file, max_input_tokens, max_output_tokens)
     scene_limit = config.get_user_narrative_scenes_llm_preprocess_scene_limit_per_narrative(user)
     llmp.update_scene_list(scene_limit)
     print("Narrative scenes LLM preprocess complete")
@@ -101,13 +126,14 @@ def module_narrative_into_vector_db(config, vector_db, user, narrative):
     :param type str, narrative: The narrative identifier.
     """
     model_id = config.get_user_narrative_scenes_llm_preprocess_model_id(user)
+    # model_name = config.get_model_inference_name(model_id)
     input_train_file = config.get_user_narrative_scenes_llm_preprocess_output_train_filename(user, narrative)
     input_eval_file = config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative)
     author_name = config.get_user_author_name(user)
 
-    api_obj = open_api_object(config, model_id)
+    # api_obj = open_api_object(config, model_id, 'inference')
 
-    llmnsp = LLMNarrativeScenesCollection(user, narrative, author_name, api_obj, input_train_file, input_eval_file, vector_db)
+    llmnsp = LLMNarrativeScenesCollection(user, narrative, author_name, input_train_file, input_eval_file, vector_db)
     llmnsp.build_vector_collection(config.get_user_narrative_into_vector_db_clean(user))
 
 def module_corpus_llm_fine_tuning(config, user, corpus):
@@ -121,7 +147,8 @@ def module_corpus_llm_fine_tuning(config, user, corpus):
     train_filename_list = [config.get_user_narrative_preprocess_output_train_filename(user, narrative) for narrative in corpus]
     fine_tune_filename = config.get_user_fine_tuned_filename(user)
     model_id = config.get_user_fine_tune_model_id(user)
-    api_obj = open_api_object(config, model_id)
+    # model_name = config.get_model_fine_tune_name(model_id)
+    api_obj = open_api_object(config, model_id, 'fine_tune')
     if api_obj is None:
         print("API object is None")
         return
@@ -138,7 +165,7 @@ def module_corpus_llm_fine_tuning_check(config, user):
     """
     model_id = config.get_user_fine_tune_model_id(user)
     fine_tune_filename = config.get_user_fine_tuned_filename(user)
-    api_obj = open_api_object(config, model_id, fine_tune_filename)
+    api_obj = open_api_object(config, model_id, 'details_filename', fine_tune_filename)
     if api_obj is None:
         print("API object is None")
         return
@@ -166,9 +193,9 @@ def module_compose_scene_llm_narrative_handler(config, vector_db, user, narrativ
     model_id = config.get_user_narrative_compose_scene_llm_handler_model_id(user)
     # fine_tune_model_name = config.get_user_fine_tune_model_name(user)
     author_name = config.get_user_author_name(user)
-    api_obj = open_api_object(config, model_id, details_filename)
-    max_input_tokens = config.get_fine_tune_model_max_input_tokens(model_id)
-    max_output_tokens = config.get_fine_tune_model_max_output_tokens(model_id)
+    api_obj = open_api_object(config, model_id, "details_filename", details_filename)
+    max_input_tokens = config.get_model_max_input_tokens(model_id)
+    max_output_tokens = config.get_model_max_output_tokens(model_id)
     input_train_filename = config.get_user_narrative_scenes_llm_preprocess_output_train_filename(user, narrative)
     input_eval_filename = config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative)
     llmnsp = LLMNarrativeScenesCompose(user, narrative, author_name, api_obj, input_train_filename, input_eval_filename, 
@@ -200,8 +227,9 @@ def main():
 
     args = parser.parse_args()
 
-    config_filename = args.config_filename
-    config = Config(config_filename, args.verbose)
+    # config.args = args
+    # config_filename = args.config_filename
+    config = Config(args)
 
     vector_db_filename = config.get_vector_db_filename()
     vector_db = None

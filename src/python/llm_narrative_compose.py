@@ -432,8 +432,9 @@ class LLMNarrativeScenesCompose(LLMNarrativeScenesHandler):
             raise ValueError("API object is not initialized. Please provide a valid model name.")
         scene_creation_request = self._format_scene_creation_prompt(scene, recent_events)
         # max_output_tokens = min(self.max_output_tokens, 3000)
-        scene['body'] = self.api_obj.get_write_scene_prompt_response(scene_creation_request, self.author_name, 
-                                                                     self.max_output_tokens, 0.7)
+        scene['body'] = self.api_obj.get_write_scene_prompt_response(scene_creation_request, self.author_name,
+                                                                     max_tokens=self.max_output_tokens,
+                                                                     temperature=0.7) 
     def write_scenes(self, scene_limit, recent_event_count):
         """Write the scenes to the output file.
         :param type int, scene_limit: The maximum number of scenes to process.

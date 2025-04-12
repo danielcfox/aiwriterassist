@@ -14,13 +14,15 @@ from llm_narrative_handler import LLMNarrativeScenesHandler
 class LLMNarrativeScenesPreprocessing(LLMNarrativeScenesHandler):
     """Class for handling LLM interactions for narrative scenes with preprocessing."""
     def __init__(self, clean, user, narrative, author_name, api_obj, train_input_file, eval_input_file, 
-                 train_output_file, eval_output_file):
+                 train_output_file, eval_output_file, max_input_tokens, max_output_tokens):
         """Initialize the LLMNarrativeScenesPreprocessing with model and narrative details."""
         if (not clean and train_output_file is not None and os.path.exists(train_output_file) and eval_output_file is not None 
             and os.path.exists(eval_output_file)):
-            super().__init__(user, narrative, author_name, api_obj, train_output_file, eval_output_file)
+            super().__init__(user, narrative, author_name, api_obj, train_output_file, eval_output_file, 
+                             max_input_tokens, max_output_tokens)
         else:
-            super().__init__(user, narrative, author_name, api_obj, train_input_file, eval_input_file)
+            super().__init__(user, narrative, author_name, api_obj, train_input_file, eval_input_file,
+                             max_input_tokens, max_output_tokens)
 
         self.train_output_file = train_output_file
         self.eval_output_file = eval_output_file
@@ -141,7 +143,8 @@ class LLMNarrativeScenesPreprocessing(LLMNarrativeScenesHandler):
         """
         if self.api_obj is None:
             raise ValueError("API object is not initialized. Please provide a valid model name.")
-        response = self.api_obj.get_prompt_response(self._format_scene_request(scene), self.max_output_tokens, 0.0)
+        response = self.api_obj.get_timed_prompt_response(self._format_scene_request(scene), max_tokens=self.max_output_tokens, 
+                                                          temperature=0.0)
         # print(response)
         try:
             response_dict = json.loads(response)

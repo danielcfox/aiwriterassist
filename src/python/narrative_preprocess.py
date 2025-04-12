@@ -203,7 +203,7 @@ class NarrativePreprocess:
     This class contains methods to process the narrative files, extract scenes, and save the results.
     """
     def __init__(self, narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
-                 train_split):
+                 train_split, scene_limit):
         """
         Initialize the NarrativePreprocess class.
         :param type list of str, narrative_filename_list: List of narrative filenames.
@@ -226,6 +226,7 @@ class NarrativePreprocess:
         self.preprocess_results = NarrativePreprocessResults()
         self.preprocess_train = None
         self.preprocess_eval = None
+        self.scene_limit = scene_limit
         # if os.path.exists(narrative_preprocessed_filename):
         #     self.preprocess_results.load(narrative_preprocessed_filename)
 
@@ -268,7 +269,8 @@ class NarrativePreprocess:
             with open(narrative_filename, "r") as fp:
                 for line in fp:
                     if self.preprocess_results.at_linenum <= linenum:
-                        self._preprocess_line(booknum + 1, line.strip())
+                        if self._preprocess_line(booknum + 1, line.strip()) == False:
+                            continue
                         self.preprocess_results.at_linenum += 1
                         # print(self.preprocess_results.__dict__)
                     linenum += 1
@@ -323,6 +325,9 @@ class NarrativePreprocess:
         :param type NarrativeScene, scene: The scene object to add.
         :return: type NarrativeScene, The added scene object.
         """
+        ppr = self.preprocess_results
+        if self.scene_limit is not None and len(ppr.scene_list) >= self.scene_limit:
+            return None
         self.preprocess_results.scene_list.append(scene.__dict__)
         return self.get_current_scene()
 
@@ -338,7 +343,8 @@ class NarrativePreprocess:
             case 'start':
                 if len(line) == 0:
                     return
-                self._preprocess_new_scene(booknum)
+                if self._preprocess_new_scene(booknum) == False:
+                    return False
                 if line.startswith(self.chapter_start_str):
                     self._preprocess_chapter(booknum, line)
                     self.preprocess_state = 'chapter'
@@ -378,8 +384,11 @@ class NarrativePreprocess:
         """
         scene = self.get_current_scene()
         new_scene = self.add_scene(NarrativeScene(scene))
+        if new_scene is None:
+            return False
         new_scene.set_booknum(booknum)
         self.update_current_scene(new_scene)
+        return True
 
     def _preprocess_narrative(self, booknum, line):
         """

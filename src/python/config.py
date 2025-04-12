@@ -15,15 +15,15 @@ class Config:
     This class loads the configuration from a YAML file and provides methods to access
     various settings related to users, models, and narratives.
     """
-    def __init__(self, config_filename, verbose=False):
+    def __init__(self, args):
         """
         Initialize the Config class with the given configuration filename.
         :param config_filename: Path to the YAML configuration file.
         """
-        with open(config_filename, "r") as fp:
+        with open(args.config_filename, "r") as fp:
             self.config = yaml.safe_load(fp)  # Use safe_load for security
 
-        self.verbose = verbose # not used yet
+        self.verbose = args.verbose # not used yet
 
     """Internal methods to access top-level configurations."""
     """They all return dictionaries of sub-parameters."""
@@ -42,6 +42,14 @@ class Config:
         if 'api_class' not in self._get_model_config(model_id):
             raise ValueError(f"API class not found for model ID {model_id}")
         return self._get_model_config(model_id)['api_class']
+
+    def get_model_fine_tune_name(self, model_id):
+        """Get the fine-tune name for the model with the given model ID."""
+        if 'fine_tune' not in self._get_model_config(model_id):
+            raise ValueError(f"Fine-tune name not found for model ID {model_id}")
+        if 'name' not in self._get_model_config(model_id)['fine_tune']:
+            raise ValueError(f"Fine-tune name not found for model ID {model_id}")
+        return self._get_model_config(model_id)['fine_tune']['name']
     
     def _get_user_config(self, user):
         return self.config['users'][user]
@@ -71,7 +79,16 @@ class Config:
         return self.config[narrative]
 
     def _get_user_preprocess_config(self, user):
+        """Get the preprocess configuration for the user."""
+        if 'preprocess' not in self._get_user_config(user):
+            raise ValueError(f"Preprocess configuration not found for user {user}")
         return self._get_user_config(user)['preprocess']
+
+    def get_user_preprocess_scene_limit(self, user):
+        """Get the scene limit for the user's preprocess configuration."""
+        if 'scene_limit_per_narrative' not in self._get_user_preprocess_config(user):
+            raise ValueError(f"Scene limit not found in preprocess configuration for user {user}")
+        return self._get_user_preprocess_config(user)['scene_limit_per_narrative']
 
     def _get_user_narrative_scenes_llm_preprocess_config(self, user):
         return self._get_user_config(user)['narrative_scenes_llm_preprocess']
@@ -185,7 +202,7 @@ class Config:
         basename = output_file_template.format(user=user, model=model_id, fine_tune_ext=fine_tune_ext)
         return os.path.join(self.get_user_cwd(user), basename)
     
-    def get_fine_tune_model_max_input_tokens(self, model_id):
+    def get_model_max_input_tokens(self, model_id):
         """Get the maximum input tokens for the fine-tuned model."""
         if 'max_tokens' not in self.config['models'][model_id]:
             raise ValueError(f"Max tokens not found in model configuration for model ID {model_id}")
@@ -193,7 +210,7 @@ class Config:
             raise ValueError(f"Input max tokens not found in model configuration for model ID {model_id}")    
         return self.config['models'][model_id]['max_tokens']['input']
 
-    def get_fine_tune_model_max_output_tokens(self, model_id):
+    def get_model_max_output_tokens(self, model_id):
         """Get the maximum output tokens for the fine-tuned model."""
         if 'max_tokens' not in self.config['models'][model_id]:
             raise ValueError(f"Max tokens not found in model configuration for model ID {model_id}")

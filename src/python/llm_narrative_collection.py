@@ -8,10 +8,10 @@ Created on Mon Jan 20 05:01:31 2025
 from llm_narrative_handler import LLMNarrativeScenesHandler
 
 class LLMNarrativeScenesCollection(LLMNarrativeScenesHandler):
-    def __init__(self, user, narrative, author_name, api_obj, train_input_file, eval_input_file, 
+    def __init__(self, user, narrative, author_name, train_input_file, eval_input_file, 
                  vector_db=None):
         """Initialize the LLMNarrativeScenesHandler with model and narrative details."""
-        super().__init__(user, narrative, author_name, api_obj, train_input_file, eval_input_file)
+        super().__init__(user, narrative, author_name, None, train_input_file, eval_input_file)
 
         self.vector_db = vector_db
    

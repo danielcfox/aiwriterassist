@@ -46,7 +46,7 @@ class NarrativePreprocessDCPFoxZombieApocalypse(NarrativePreprocess):
     Inherits from the NarrativePreprocess class.
     """
     def __init__(self, narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
-                 train_eval_split):
+                 train_eval_split, scene_limit=None):
         """
         Initialize the narrative preprocess with the given filenames and split.
         :param type list of str, narrative_filename_list: List of narrative filenames.
@@ -55,7 +55,7 @@ class NarrativePreprocessDCPFoxZombieApocalypse(NarrativePreprocess):
         :param type float, train_eval_split: The split ratio for training and evaluation data.
         """
         super().__init__(narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
-                         train_eval_split)
+                         train_eval_split, scene_limit)
 
         self.day_start_str = 'Day'
         self.scene_delimiter = '* * *'
@@ -70,7 +70,8 @@ class NarrativePreprocessDCPFoxZombieApocalypse(NarrativePreprocess):
             with open(narrative_filename, "r") as fp:
                 for line in fp:
                     if self.preprocess_results.at_linenum <= linenum:
-                        self._preprocess_line(booknum + 1, line.strip())
+                        if self._preprocess_line(booknum + 1, line.strip()) == False:
+                            continue
                         self.preprocess_results.at_linenum += 1
                         # print(self.preprocess_results.__dict__)
                     linenum += 1
@@ -87,12 +88,14 @@ class NarrativePreprocessDCPFoxZombieApocalypse(NarrativePreprocess):
         match self.preprocess_state:
             case 'start':
                 # print(line)
-                self._preprocess_new_scene(booknum)
+                if self._preprocess_new_scene(booknum) == False:
+                    return False
                 if line.startswith(self.chapter_start_str):
                     self._preprocess_chapter(booknum, line)
                     self.preprocess_state = 'chapter'
                 elif line.startswith(self.day_start_str):
-                    self._preprocess_day(booknum, line)
+                    if self._preprocess_day(booknum, line) == False:
+                        return False
                     self.preprocess_state = 'day'
                 elif len(line) > 0:
                     self._preprocess_narrative(booknum, line)
@@ -100,7 +103,8 @@ class NarrativePreprocessDCPFoxZombieApocalypse(NarrativePreprocess):
 
             case 'chapter':
                 if line.startswith(self.day_start_str):
-                    self._preprocess_day(booknum, line)
+                    if self._preprocess_day(booknum, line) == False:
+                        return False
                     self.preprocess_state = 'day'
                 elif len(line) > 0:
                     self._preprocess_narrative(booknum, line)
@@ -146,8 +150,11 @@ class NarrativePreprocessDCPFoxZombieApocalypse(NarrativePreprocess):
         """
         scene = self.get_current_scene()
         new_scene = self.add_scene(NarrativeSceneDCPFoxZombieApocalypse(scene))
+        if new_scene is None:
+            return False
         new_scene.set_booknum(booknum)
         self.update_current_scene(new_scene)
+        return True
 
     def _preprocess_day(self, booknum, line):
         """
@@ -158,10 +165,13 @@ class NarrativePreprocessDCPFoxZombieApocalypse(NarrativePreprocess):
         scene = self.get_current_scene()
         if scene is None:
             scene = self.add_scene(NarrativeSceneDCPFoxZombieApocalypse(None))
+        if scene is None:
+            return False
         scene.set_day(line)
         # print(scene.daynum)
         scene.set_booknum(booknum)
         self.update_current_scene(scene)
+        return True
 
 class NarrativePreprocessDCPFoxFate(NarrativePreprocess):
     """
@@ -169,7 +179,7 @@ class NarrativePreprocessDCPFoxFate(NarrativePreprocess):
     Inherits from the NarrativePreprocess class.
     """
     def __init__(self, narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
-                 train_eval_split):
+                 train_eval_split, scene_limit=None):
         """
         Initialize the narrative preprocess with the given filenames and split.
         :param type list of str, narrative_filename_list: List of narrative filenames.
@@ -178,5 +188,5 @@ class NarrativePreprocessDCPFoxFate(NarrativePreprocess):
         :param type float, train_eval_split: The split ratio for training and evaluation data.
         """
         super().__init__(narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
-                         train_eval_split)
+                         train_eval_split, scene_limit)
         self.scene_delimiter = '* * *'
