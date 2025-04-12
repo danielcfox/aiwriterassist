@@ -55,6 +55,7 @@ class LLMOpenAIAPIHandler(LLMHandler):
         """
         Open a connection to the OpenAI API.
         :return: The OpenAI API client object.
+        :raises ValueError: If the OPENAI_API_KEY environment variable is not set.
         """
          # we assume only use OPENAI_API_KEY environment variable
          # and this makes this class object a singleton
@@ -84,23 +85,23 @@ class LLMOpenAIAPIHandler(LLMHandler):
         """
         Retrieve the details of the fine-tuned model.
 
-        :raises ValueError: If `details_model` is not set before calling this method.
+        :raises Value error: If `self.details_model` is not set before calling this method.
+            'self.details_model' is originally set in fine_tune_submit method
+        :return: None
         """
         if self.details_model is None:
             raise ValueError("details_model is None. Please set it before using this method.")
         self.details_model = openai.fine_tuning.jobs.retrieve(self.details_model.id)
 
-    def get_fine_tuned_model_pending(self, details_model) -> bool:
+    def get_fine_tuned_model_pending(self, details_model: object) -> bool:
         """
         Check if the fine-tuned model is still pending or running.
         :param details_model: The details of the fine-tuned model.
-
-        :rtype: object 
+            'details_model' is originally set in fine_tune_submit method
         :rtype: bool
         :return:
-            1. The details of the fine-tuned model.
-            2. True if the fine-tuned model is pending or running.
-            3. False otherwise.
+            1. True if the fine-tuned model is pending or running.
+            2. False otherwise.
         """
         self.details_model = openai.fine_tuning.jobs.retrieve(details_model.id)
         return self.details_model.status in {"pending", "running"}
@@ -113,7 +114,8 @@ class LLMOpenAIAPIHandler(LLMHandler):
         :param kwargs: Additional arguments, including:
             - max_tokens (int): The maximum number of tokens to generate.
             - temperature (float): The sampling temperature to use (0.0 to 1.0).
-        :return: The response from the LLM as a string.
+        :rtype: str
+        :return: The response from the LLM
         :raises ValueError: If required arguments are missing or invalid.
         """
         for key in kwargs:
@@ -292,4 +294,3 @@ class LLMOpenAIAPIHandler(LLMHandler):
         if self.verbose:
             print(f"Prompt Response (length {resp_wordlen} words):\n\n{cleaned_response}\n\n")
         return cleaned_response
-
