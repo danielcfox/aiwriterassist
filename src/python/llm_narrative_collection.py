@@ -6,16 +6,25 @@ Created on Mon Jan 20 05:01:31 2025
 @author: dfox
 """
 from llm_narrative_handler import LLMNarrativeScenesHandler
+from vdb_milvus import VectorDBMilvus
 
 class LLMNarrativeScenesCollection(LLMNarrativeScenesHandler):
-    def __init__(self, user, narrative, author_name, train_input_file, eval_input_file, 
-                 vector_db=None):
-        """Initialize the LLMNarrativeScenesHandler with model and narrative details."""
+    def __init__(self, user: str, narrative: str, author_name: str, train_input_file: str, eval_input_file: str, 
+                 vector_db: VectorDBMilvus =None):
+        """Initialize the LLMNarrativeScenesHandler with model and narrative details.
+        :param type str user: The user name.
+        :param type str narrative: The narrative name.
+        :param type str author_name: The author name.
+        :param type str train_input_file: The training input file.
+        :param type str eval_input_file: The evaluation input file.
+        :param type str vector_db: The vector database object (from class VectorDBMilvus).
+        :return: None
+        """
         super().__init__(user, narrative, author_name, None, train_input_file, eval_input_file)
 
         self.vector_db = vector_db
    
-    def build_vector_collection(self, clean):
+    def build_vector_collection(self, clean: bool = False):
         """Build the vector collection for the narrative.
         :param type bool, clean: Whether to clean the collection before building.
         :return: None
@@ -103,4 +112,3 @@ class LLMNarrativeScenesCollection(LLMNarrativeScenesHandler):
 
         print(f"Insert documents into the collection")
         self.vector_db.insert_documents(self.narrative, doc_types)
-
