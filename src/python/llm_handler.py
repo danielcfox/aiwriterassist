@@ -15,7 +15,7 @@ class LLMHandler:
     Base class for handling LLM interactions.
     This class provides a common interface for different LLM handlers.
     """
-    def __init__(self, model_spec: str, model, **kwargs):
+    def __init__(self, model_spec: str, model: str, **kwargs):
         """
         Initialize the LLMHandler with a specific model.
         :param model_spec: Specifies the type of the model argument.
@@ -46,6 +46,8 @@ class LLMHandler:
                             available through the GPT-4o API.
         :param model: The model argument, which can either be a filename (if model_spec is 
                     'openai_details_filename') or the name of the model (if model_spec is 'model_name').
+        :return: None
+        :raises ValueError: If the model_spec is invalid or if the model is not available.
         """
         self.details_model: Optional[object] = None
 
