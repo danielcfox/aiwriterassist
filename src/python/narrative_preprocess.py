@@ -93,7 +93,7 @@ class NarrativePreprocessResults:
         if len(self.scene_list) > 0:
             return self.scene_list[-1]
         return None
-    
+
     def get_train_scene_list(self):
         """
         Get the list of training scenes from the scene list.
@@ -202,8 +202,9 @@ class NarrativePreprocess:
     Class to preprocess narrative files and extract scenes.
     This class contains methods to process the narrative files, extract scenes, and save the results.
     """
-    def __init__(self, narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
-                 train_split, scene_limit):
+    # def __init__(self, narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
+    #              train_split, scene_limit):
+    def __init__(self, **kwargs):
         """
         Initialize the NarrativePreprocess class.
         :param type list of str, narrative_filename_list: List of narrative filenames.
@@ -211,24 +212,24 @@ class NarrativePreprocess:
         :param type str, narrative_preprocessed_eval_filename: Filename for the preprocessed evaluation data.
         :param type float, train_split: The split ratio for training and evaluation data.
         """
-        clean = True
+        self.narrative_filename_list = None
+        self.narrative_preprocessed_train_filename = None
+        self.narrative_preprocessed_eval_filename = None
+        self.train_split = None
+        self.scene_limit = None
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
         self.chapter_start_str = 'Chapter'
-        self.narrative_filename_list = narrative_filename_list
-        self.narrative_preprocessed_train_filename = narrative_preprocessed_train_filename
-        self.narrative_preprocessed_eval_filename = narrative_preprocessed_eval_filename
-        self.train_split = train_split
-        if clean and os.path.exists(narrative_preprocessed_train_filename):
-            os.remove(narrative_preprocessed_train_filename)
-        if clean and os.path.exists(narrative_preprocessed_eval_filename):
-            os.remove(narrative_preprocessed_eval_filename)
+        if os.path.exists(self.narrative_preprocessed_train_filename):
+            os.remove(self.narrative_preprocessed_train_filename)
+        if os.path.exists(self.narrative_preprocessed_eval_filename):
+            os.remove(self.narrative_preprocessed_eval_filename)
         self.scene_delimiter = ''
         self.preprocess_state = 'start'
         self.preprocess_results = NarrativePreprocessResults()
         self.preprocess_train = None
         self.preprocess_eval = None
-        self.scene_limit = scene_limit
-        # if os.path.exists(narrative_preprocessed_filename):
-        #     self.preprocess_results.load(narrative_preprocessed_filename)
 
     def train_eval_split(self):
         """

@@ -10,28 +10,81 @@ import os
 from tqdm import tqdm
 
 from llm_narrative_handler import LLMNarrativeScenesHandler
+from llm_openai_api_handler import LLMOpenAIAPIHandler
 
 class LLMNarrativeScenesPreprocessing(LLMNarrativeScenesHandler):
-    """Class for handling LLM interactions for narrative scenes with preprocessing."""
-    def __init__(self, clean, user, narrative, author_name, api_obj, train_input_file, eval_input_file, 
-                 train_output_file, eval_output_file, max_input_tokens, max_output_tokens):
-        """Initialize the LLMNarrativeScenesPreprocessing with model and narrative details."""
-        if (not clean and train_output_file is not None and os.path.exists(train_output_file) and eval_output_file is not None 
-            and os.path.exists(eval_output_file)):
-            super().__init__(user, narrative, author_name, api_obj, train_output_file, eval_output_file, 
-                             max_input_tokens, max_output_tokens)
-        else:
-            super().__init__(user, narrative, author_name, api_obj, train_input_file, eval_input_file,
-                             max_input_tokens, max_output_tokens)
+    """
+    A handler for preprocessing narrative scenes using LLMs to extract structured metadata.
 
-        self.train_output_file = train_output_file
-        self.eval_output_file = eval_output_file
-        
-    def _dump_train(self):        
-        self.preprocess_results.dump_train(self.train_output_file)
+    This class processes raw narrative scenes and uses an LLM to analyze the content,
+    extracting key elements such as characters, settings, objects, and plot summaries.
+    It transforms unstructured narrative text into structured JSON data that can be used
+    for further processing, vector embedding, and scene generation.
+
+    The class handles:
+    1. Loading raw narrative scenes from input files
+    2. Analyzing scene content with LLM to identify narrative elements
+    3. Extracting character descriptions and perspectives
+    4. Identifying settings and objects with descriptions
+    5. Determining scene focus, tone, and point of view style
+    6. Creating structured scene summaries
+    7. Saving processed data to output files
+
+    The preprocessing creates rich metadata that powers downstream tasks such as
+    vector embedding, semantic search, and contextually-aware scene generation.
+    """
+    def __init__(self, **kwargs):
+        # when doing an unclean run, set input_train_filename to the same as output_train_filename,
+        # and also set input_eval_filename to the same as output_eval_filename
+        # this means that the output files will be treated as input files, with all of the metadata set from a previous run
+        """Initialize the LLMNarrativeScenesPreprocessing with model and narrative details."""
+
+        # Required parameters
+        self.author_name = None
+        self.api_obj = None
+        self.max_output_tokens = None
+        self.narrative = None
+        self.output_train_filename = None
+
+        # Optional parameters
+        self.output_eval_filename = None
+        self.verbose = False
+
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+        if len(self.output_eval_filename) == 0 or not os.path.exists(self.output_eval_filename):
+            self.output_eval_filename = None
+        if self.author_name is None or len(self.author_name) == 0:
+            raise ValueError("author_name is not set")
+        if self.narrative is None or len(self.narrative) == 0:
+            raise ValueError("narrative is not set")
+        if self.output_train_filename is None or not os.path.exists(self.output_train_filename):
+            raise ValueError("output_train_filename is not set")
+        if self.api_obj is None or not isinstance(self.api_obj, LLMOpenAIAPIHandler):
+            raise ValueError("api_obj is not set")
+        if self.max_output_tokens is None:
+            raise ValueError("max_output_tokens is not set")
+
+        # del kwargs['output_train_filename']
+        # del kwargs['output_eval_filename']
+
+        input_filename_list = []
+        if self.input_train_filename is not None and os.path.exists(self.input_train_filename):
+            input_filename_list.append(self.input_train_filename)
+        if self.input_eval_filename is not None and os.path.exists(self.input_eval_filename):
+            input_filename_list.append(self.input_eval_filename)
+        if len(input_filename_list) == 0:
+            raise ValueError("LLMNarrativeScenesCollection: Neither Input train file nor Input eval file exists.")
+
+        super().__init__(input_filename_list, self.verbose)
+
+    def _dump_train(self):
+        self.preprocess_results.dump_train(self.output_train_filename)
 
     def _dump_eval(self):
-        self.preprocess_results.dump_eval(self.eval_output_file)
+        if self.output_eval_filename is not None:
+            self.preprocess_results.dump_eval(self.output_eval_filename)
 
     def _get_scene_prompt(self, scene):
         p = "{"
@@ -52,7 +105,7 @@ class LLMNarrativeScenesPreprocessing(LLMNarrativeScenesHandler):
                         "description": "<character 2 (named explicitly) traits and backstory only>",
                         "plot_summary": "<events that occur in the scene beginning, middle, and end),
                                          from point of view of character 2;
-                                         do not use the words 'character', 'setting', 'object', scene', 'plot', 'synopsis', 
+                                         do not use the words 'character', 'setting', 'object', scene', 'plot', 'synopsis',
                                          or 'summary'>"
                         }
                     "<named character n, if there are more than two characters>": {
@@ -105,10 +158,10 @@ class LLMNarrativeScenesPreprocessing(LLMNarrativeScenesHandler):
                         "plot_summary": "<events that occur in the scene (beginning, middle, and end), at this specific setting;
                                          do not use the words 'character', 'setting', 'object', 'scene', 'plot', 'synopsis',
                                          or 'summary'>"
-                        } 
+                        }
                     },
                 "focus": "<focus of the scene, if there is one, do not user the word 'focus'>",
-                "tone": "<conflict OR suspense OR mysterious OR foreboding OR intriguing OR comedic OR reflective OR descriptive 
+                "tone": "<conflict OR suspense OR mysterious OR foreboding OR intriguing OR comedic OR reflective OR descriptive
                          OR emotional OR introspective OR philosophical OR romantic OR action OR adventure OR horror>"
                 "point of view style": "<first person OR second person OR third person or fourth person>
                                         <'limited' (knows only thoughts and feelings of point of view character)
@@ -117,7 +170,7 @@ class LLMNarrativeScenesPreprocessing(LLMNarrativeScenesHandler):
                                  make sure to reference all named characters;
                                  make the length approximately one-tenth of the scene text;
                                  do not use the words 'character', 'setting', 'object', 'scene', 'plot', 'tone', 'focus',
-                                 'synopsis', or 'summary'; 
+                                 'synopsis', or 'summary';
                                  stick to the events of the scene with no commentary on character thoughts or feelings>"
                 }
             """
@@ -128,7 +181,7 @@ class LLMNarrativeScenesPreprocessing(LLMNarrativeScenesHandler):
 
     def _format_scene_request(self, scene):
         p = f"Given the following scene from a fiction narrative called {self.narrative} "
-        p += f"that fiction writer {self.user} wrote. The content of the scene is:\n"
+        p += f"that fiction writer {self.author_name} wrote. The content of the scene is:\n"
         p += f"{scene['body']}\n"
         p += "Analyze and give a response.\n"
         p += "Format the response in the following well-formed JSON format:\n"
@@ -143,7 +196,7 @@ class LLMNarrativeScenesPreprocessing(LLMNarrativeScenesHandler):
         """
         if self.api_obj is None:
             raise ValueError("API object is not initialized. Please provide a valid model name.")
-        response = self.api_obj.get_timed_prompt_response(self._format_scene_request(scene), max_tokens=self.max_output_tokens, 
+        response = self.api_obj.get_timed_prompt_response(self._format_scene_request(scene), max_tokens=self.max_output_tokens,
                                                           temperature=0.0)
         # print(response)
         try:
@@ -183,8 +236,9 @@ class LLMNarrativeScenesPreprocessing(LLMNarrativeScenesHandler):
                         continue
                     break
                 scene.update(sr)
-            ppr.dump_train(self.train_output_file)
-            ppr.dump_eval(self.eval_output_file)
+            ppr.dump_train(self.output_train_filename)
+            if self.output_eval_filename is not None:
+                ppr.dump_eval(self.output_eval_filename)
         return
 
     def update_scene_list(self, scene_limit):
@@ -196,4 +250,5 @@ class LLMNarrativeScenesPreprocessing(LLMNarrativeScenesHandler):
         ppr = self.preprocess_results
         self._get_scene_list_response(ppr, scene_limit)
         self._dump_train()
-        self._dump_eval()
+        if self.output_eval_filename is not None:
+            self._dump_eval()

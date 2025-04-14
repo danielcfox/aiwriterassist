@@ -45,8 +45,9 @@ class NarrativePreprocessDCPFoxZombieApocalypse(NarrativePreprocess):
     Class to preprocess the DCP Fox Zombie Apocalypse narrative.
     Inherits from the NarrativePreprocess class.
     """
-    def __init__(self, narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
-                 train_eval_split, scene_limit=None):
+    # def __init__(self, narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
+    #              train_eval_split, scene_limit=None):
+    def __init__(self, **kwargs):
         """
         Initialize the narrative preprocess with the given filenames and split.
         :param type list of str, narrative_filename_list: List of narrative filenames.
@@ -54,8 +55,7 @@ class NarrativePreprocessDCPFoxZombieApocalypse(NarrativePreprocess):
         :param type str, narrative_preprocessed_eval_filename: Filename for the preprocessed evaluation data.
         :param type float, train_eval_split: The split ratio for training and evaluation data.
         """
-        super().__init__(narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
-                         train_eval_split, scene_limit)
+        super().__init__(**kwargs)
 
         self.day_start_str = 'Day'
         self.scene_delimiter = '* * *'
@@ -178,8 +178,9 @@ class NarrativePreprocessDCPFoxFate(NarrativePreprocess):
     Class to preprocess the DCP Fox Fate narrative.
     Inherits from the NarrativePreprocess class.
     """
-    def __init__(self, narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
-                 train_eval_split, scene_limit=None):
+    # def __init__(self, narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
+    #              train_eval_split, scene_limit=None):
+    def __init__(self, **kwargs):
         """
         Initialize the narrative preprocess with the given filenames and split.
         :param type list of str, narrative_filename_list: List of narrative filenames.
@@ -187,6 +188,5 @@ class NarrativePreprocessDCPFoxFate(NarrativePreprocess):
         :param type str, narrative_preprocessed_eval_filename: Filename for the preprocessed evaluation data.
         :param type float, train_eval_split: The split ratio for training and evaluation data.
         """
-        super().__init__(narrative_filename_list, narrative_preprocessed_train_filename, narrative_preprocessed_eval_filename,
-                         train_eval_split, scene_limit)
+        super().__init__(**kwargs)
         self.scene_delimiter = '* * *'

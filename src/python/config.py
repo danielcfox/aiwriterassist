@@ -35,22 +35,7 @@ class Config:
             raise ValueError(f"Model ID {model_id} not found in the global config.")
         print(self.config['models'])
         return self.config['models'][model_id]
-    
-    def get_model_class(self, model_id):
-        """Get the class name for the model with the given model ID."""
-        print(self._get_model_config(model_id))
-        if 'api_class' not in self._get_model_config(model_id):
-            raise ValueError(f"API class not found for model ID {model_id}")
-        return self._get_model_config(model_id)['api_class']
 
-    def get_model_fine_tune_name(self, model_id):
-        """Get the fine-tune name for the model with the given model ID."""
-        if 'fine_tune' not in self._get_model_config(model_id):
-            raise ValueError(f"Fine-tune name not found for model ID {model_id}")
-        if 'name' not in self._get_model_config(model_id)['fine_tune']:
-            raise ValueError(f"Fine-tune name not found for model ID {model_id}")
-        return self._get_model_config(model_id)['fine_tune']['name']
-    
     def _get_user_config(self, user):
         return self.config['users'][user]
 
@@ -60,7 +45,7 @@ class Config:
         if 'fine_tune' not in user_config:
             raise ValueError(f"Fine-tune configuration not found for user {user}")
         return user_config['fine_tune']
-    
+
     def _get_user_model_fine_tune_config(self, user):
         """Get the model fine-tune configuration for the user."""
         user_fine_tune_config = self._get_user_fine_tune_config(user)
@@ -68,7 +53,7 @@ class Config:
             raise ValueError(f"Model configuration not found for user {user}")
         model_name = user_fine_tune_config['model']
         return self._get_model_config(model_name)['fine_tune']
-    
+
     def _get_user_model_fine_tune_ext(self, user):
         fine_tune_config = self._get_user_model_fine_tune_config(user)
         if 'ext' not in fine_tune_config:
@@ -84,12 +69,6 @@ class Config:
             raise ValueError(f"Preprocess configuration not found for user {user}")
         return self._get_user_config(user)['preprocess']
 
-    def get_user_preprocess_scene_limit(self, user):
-        """Get the scene limit for the user's preprocess configuration."""
-        if 'scene_limit_per_narrative' not in self._get_user_preprocess_config(user):
-            raise ValueError(f"Scene limit not found in preprocess configuration for user {user}")
-        return self._get_user_preprocess_config(user)['scene_limit_per_narrative']
-
     def _get_user_narrative_scenes_llm_preprocess_config(self, user):
         return self._get_user_config(user)['narrative_scenes_llm_preprocess']
 
@@ -103,8 +82,36 @@ class Config:
             return None
         return self._get_user_config(user)['narrative_scenes_build_test_set']
 
+    def _get_model_inference_config(self, model_id):
+        """Get the inference configuration for the model."""
+        model_config = self._get_model_config(model_id)
+        if 'inference' not in model_config:
+            raise ValueError(f"Inference configuration not found for model ID {model_id}")
+        return model_config['inference']
+
     """End of internal methods"""
-    
+
+    def get_model_class(self, model_id):
+        """Get the class name for the model with the given model ID."""
+        print(self._get_model_config(model_id))
+        if 'api_class' not in self._get_model_config(model_id):
+            raise ValueError(f"API class not found for model ID {model_id}")
+        return self._get_model_config(model_id)['api_class']
+
+    def get_model_fine_tune_name(self, model_id):
+        """Get the fine-tune name for the model with the given model ID."""
+        if 'fine_tune' not in self._get_model_config(model_id):
+            raise ValueError(f"Fine-tune name not found for model ID {model_id}")
+        if 'name' not in self._get_model_config(model_id)['fine_tune']:
+            raise ValueError(f"Fine-tune name not found for model ID {model_id}")
+        return self._get_model_config(model_id)['fine_tune']['name']
+
+    def get_user_preprocess_scene_limit(self, user):
+        """Get the scene limit for the user's preprocess configuration."""
+        if 'scene_limit_per_narrative' not in self._get_user_preprocess_config(user):
+            raise ValueError(f"Scene limit not found in preprocess configuration for user {user}")
+        return self._get_user_preprocess_config(user)['scene_limit_per_narrative']
+
     def get_vector_db_filename(self):
         """Get the vector database name from the global configuration."""
         if 'vector_db_filename' not in self.config:
@@ -130,14 +137,7 @@ class Config:
         if 'train_split' not in user_config:
             return None
         return user_config['train_split']
-    
-    def _get_model_inference_config(self, model_id):
-        """Get the inference configuration for the model."""
-        model_config = self._get_model_config(model_id)
-        if 'inference' not in model_config:
-            raise ValueError(f"Inference configuration not found for model ID {model_id}")
-        return model_config['inference']
-    
+
     def get_model_inference_name(self, model_id):
         """Get the model inference name from the model configuration."""
         inference_config = self._get_model_inference_config(model_id)
@@ -148,14 +148,14 @@ class Config:
     def get_user_fine_tune_model_id(self, user):
         """Get the fine-tuned model ID from the user's fine-tune configuration."""
         return self._get_user_fine_tune_config(user).get('model', None)
-    
+
     def get_user_fine_tune_maxwait(self, user):
         """Get the maximum wait time while the user's model is being fine-tuned.
         Note that after the time has expired, the model is not guaranteed to be ready.
         And then the user must check the status of the model periodically.
         """
         return self._get_user_fine_tune_config(user).get('maxwait', 0)
-    
+
     def get_user_fine_tune_model_name(self, user):
         """Get the fine-tuned model name from the user's fine-tune configuration."""
         model_id = self.get_user_fine_tune_model_id(user)
@@ -168,7 +168,7 @@ class Config:
             raise ValueError(f"Inference configuration not found for model ID {model_id}")
         if 'name' not in model_config['inference']:
             raise ValueError(f"Model name not found in inference configuration for model ID {model_id}")
-        return model_config['inference']['name'] 
+        return model_config['inference']['name']
 
     def get_user_summary_recent_scene_count(self, user):
         """Get the recent scene count from the user's fine-tune configuration."""
@@ -178,13 +178,13 @@ class Config:
         if 'recent_scene_count' not in config:
             return None
         return config['recent_scene_count']
-    
+
     def get_user_author_name(self, user):
         """Get the author's name from the user's configuration."""
         if 'author_name' not in self._get_user_config(user):
             return user
         return self._get_user_config(user)['author_name']
-    
+
     def _get_user_fine_tune_output_file_template(self, user):
         return self._get_user_fine_tune_config(user).get('output_file_template', None)
 
@@ -201,13 +201,13 @@ class Config:
             raise ValueError(f"Output file template not found in fine-tune configuration for user {user}")
         basename = output_file_template.format(user=user, model=model_id, fine_tune_ext=fine_tune_ext)
         return os.path.join(self.get_user_cwd(user), basename)
-    
+
     def get_model_max_input_tokens(self, model_id):
         """Get the maximum input tokens for the fine-tuned model."""
         if 'max_tokens' not in self.config['models'][model_id]:
             raise ValueError(f"Max tokens not found in model configuration for model ID {model_id}")
         if 'input' not in self.config['models'][model_id]['max_tokens']:
-            raise ValueError(f"Input max tokens not found in model configuration for model ID {model_id}")    
+            raise ValueError(f"Input max tokens not found in model configuration for model ID {model_id}")
         return self.config['models'][model_id]['max_tokens']['input']
 
     def get_model_max_output_tokens(self, model_id):
@@ -217,11 +217,11 @@ class Config:
         if 'output' not in self.config['models'][model_id]['max_tokens']:
             raise ValueError(f"Output max tokens not found in model configuration for model ID {model_id}")
         return self.config['models'][model_id]['max_tokens']['output']
-    
+
     def get_user_preprocess_corpus(self, user):
         """Get the corpus narrative list from the user's preprocess configuration."""
         return self._get_user_preprocess_config(user)['corpus_narrative_list']
-    
+
     def get_user_narratives_directory(self, user):
         """Get the directory for narratives from the user's configuration."""
         if 'narratives_directory' not in self._get_user_config(user):
@@ -295,14 +295,14 @@ class Config:
         if 'clean' not in config:
             return False
         return config['clean']
-    
+
     def get_user_narrative_scenes_build_test_set_scene_limit(self, user):
         """Get the scene limit from the user's narrative scenes build test set configuration."""
         config = self._get_user_narrative_scenes_build_test_set_config(user)
         if 'scene_limit_per_narrative' not in config:
             return None
         return config['scene_limit_per_narrative']
-    
+
     def get_user_narrative_compose_scene_llm_handler_config(self, user):
         """Get the configuration for the narrative compose scene LLM handler."""
         if 'compose_scene_llm_handler' not in self._get_user_config(user):
@@ -315,7 +315,7 @@ class Config:
         if 'input_directory' not in config:
             return self.get_user_cwd(user)
         return config['input_directory']
-    
+
     def get_user_narrative_compose_scene_llm_handler_output_directory(self, user):
         """Get the output directory for the narrative compose scene LLM handler."""
         config = self.get_user_narrative_compose_scene_llm_handler_config(user)
@@ -335,7 +335,7 @@ class Config:
         if not os.path.isdir(input_directory):
             raise ValueError(f"Input directory {input_directory} is not a directory for user {user}")
         return os.path.join(input_directory, input_basename_template.format(user=user, narrative=narrative))
-    
+
     def get_user_narrative_compose_scene_llm_handler_output_filename(self, user, narrative):
         """Get the output filename for the narrative compose scene LLM handler."""
         config = self.get_user_narrative_compose_scene_llm_handler_config(user)
@@ -348,7 +348,7 @@ class Config:
             raise ValueError(f"Output directory {output_directory} is not a directory for user {user}")
         output_basename_template = config['output_file_compose_template']
         return os.path.join(output_directory, output_basename_template.format(user=user, narrative=narrative))
-    
+
     def get_user_narrative_compose_scene_llm_handler_model_id(self, user):
         """Get the model name for the narrative compose scene LLM handler."""
         config = self.get_user_narrative_compose_scene_llm_handler_config(user)
@@ -356,7 +356,7 @@ class Config:
             raise ValueError(f"Model not found in config for user {user}")
         return config['model']
         # return self.config['models'][model_id]['name']
-    
+
     def get_user_narrative_compose_scene_llm_handler_test(self, user):
         """Get the test flag for the narrative compose scene LLM handler."""
         config = self.get_user_narrative_compose_scene_llm_handler_config(user)
@@ -370,7 +370,7 @@ class Config:
         if 'scene_limit_per_narrative' not in config:
             raise ValueError(f"Scene limit not found in config for user {user}")
         return config['scene_limit_per_narrative']
-    
+
     def get_user_narrative_compose_scene_llm_handler_recent_event_count(self, user):
         """Get the recent event count (number of previous scene summaries to include in the compose scene prompt)
         for the narrative compose scene LLM handler."""
@@ -378,14 +378,14 @@ class Config:
         if 'recent_event_count' not in config:
             return None
         return config['recent_event_count']
-    
+
     def get_user_narrative_scenes_build_test_set_input_directory(self, user):
         """Get the input directory for the narrative scenes build test set."""
         config = self.get_user_narrative_scenes_build_test_set_config(user)
         if 'input_directory' not in config:
             return self.get_user_cwd(user)
         return config['input_directory']
-    
+
     def get_user_narrative_scenes_build_test_set_output_directory(self, user):
         """Get the output directory for the narrative scenes build test set."""
         config = self._get_user_narrative_scenes_build_test_set_config(user)
@@ -447,4 +447,3 @@ class Config:
         if 'run_narrative_scenes_build_test_set' not in self.config:
             return False
         return self.config['run_narrative_scenes_build_test_set']
-    

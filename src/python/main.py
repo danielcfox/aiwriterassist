@@ -12,69 +12,62 @@ import random
 import time
 
 from config import Config
-from narrative_preprocess import NarrativePreprocessResults
-from narrative_preprocess_dcpfox import NarrativePreprocessDCPFoxZombieApocalypse, NarrativePreprocessDCPFoxFate
-from llm_narrative_preprocessing import LLMNarrativeScenesPreprocessing
 from llm_narrative_collection import LLMNarrativeScenesCollection
 from llm_narrative_compose import LLMNarrativeScenesCompose
-from narrative_compose_build_test import LLMNarrativeScenesBuildTestCompose
+from llm_narrative_preprocessing import LLMNarrativeScenesPreprocessing
 from llm_openai_api_handler import LLMOpenAIAPIHandler
-
+from narrative_compose_build_test import LLMNarrativeScenesBuildTestCompose
+from narrative_preprocess import NarrativePreprocessResults
+from narrative_preprocess_dcpfox import NarrativePreprocessDCPFoxZombieApocalypse, NarrativePreprocessDCPFoxFate
 from vdb_milvus import VectorDBMilvus
 
-
-LLM_MODELS = {'gpt-4o-mini':
-                  {'api_class': LLMOpenAIAPIHandler,
-                   'max_tokens': 128000,
-                   'max_output_tokens': 16384},
-              # 'meta-llama/Meta-Llama-3-8B-Instruct-4bit':
-              #     {'api_class': LLMLlama38BInstruct4bit,
-              #      'max_tokens': 8192}
-              }
-
-def open_api_object(config, model_id, model_spec: str, model_filename: str = None):
+def open_api_object(config: Config, model_id: str, **kwargs) -> object:
     """
     Create an API object for the specified model.
-    :param type Config, config: The configuration object.
-    :param type str, model_id: The model ID to use.
-    :param type str, model_spec: Specifies the type of the model argument.
-                         Options are 'openai_details_filename' or 'model_name'.
-                         - 'details_filename': Indicates that the model argument is a filename
-                             containing the object details of a fine-tuned model.
-                         - 'model_name': Indicates that the model argument is the name of the model
-                             available through the GPT-4o API.
-    :param type str, model: The model to use.
-    :raises ValueError: If the model class name specified in the configuration file does not exist.
-    :return: An instance of the API class for the specified model.
+
+    Parameters:
+        config (Config): The configuration object containing model settings.
+        model_id (str): The identifier of the model to create.
+        **kwargs: Additional keyword arguments for model configuration:
+            - details_uri (str, optional): The URI/path to the model details file.
+            - model_name (str, optional): The name of the model to use.
+            - author_name (str, optional): The name of the author for personalized models.
+
+    Returns:
+        object: An instance of the model class specified by the configuration.
+
+    Raises:
+        KeyError: If the model class specified in config doesn't exist in globals().
     """
+    details_uri = getattr(kwargs, 'details_uri', None)
+    model_name = getattr(kwargs, 'model_name', None)
     api_class_name = config.get_model_class(model_id)
     api_class = globals()[api_class_name]
+
     if config.verbose:
-        print(f"model_spec {model_spec}")
-    if model_spec == 'inference':
-        model = config.get_model_inference_name(model_id)
-        model_spec = 'model_name'
-    elif model_spec == 'fine_tune':
-        model = config.get_model_fine_tune_name(model_id)
-        model_spec = 'model_name'
-    elif model_spec == 'details_filename':
-        model = model_filename
-    else:
-        raise ValueError(f"Invalid model_spec '{model_spec}'. Must be 'openai_details_filename', 'model_name', or 'fine_tune.")
+        print(f"model_id {model_id}")
+        print(f"details_uri {details_uri}")
+        print(f"model_name {model_name}")
 
-    # if use_fine_tuned_model is None:
-    #     model_name = config.get_model_inference_name(model_id)
-    #     model_spec = 'model_name'
-    # else:
-    #     model_name = use_fine_tuned_model
-    #     model_spec = 'openai_details_filename'
-    return api_class(model_spec, model, verbose=config.verbose)
+    return api_class(**kwargs)
 
-def module_narrative_preprocess(config, user, narrative):
-    """Preprocess the narrative data for the given user and narrative.
-    :param type Config, config: The configuration object.
-    :param type str, user: The user/author identifier.
-    :param type str, narrative: The narrative identifier.
+def module_narrative_preprocess(config: Config, user: str, narrative: str) -> None:
+    """
+    Preprocess the narrative data for the given user and narrative.
+
+    This function loads the appropriate narrative preprocessing class based on configuration,
+    and processes the input files into training and evaluation datasets.
+
+    Parameters:
+        config (Config): The configuration object with processing settings.
+        user (str): The user/author identifier.
+        narrative (str): The narrative identifier.
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If the class name specified in configuration file does not exist.
     """
     input_filename_list = config.get_user_narrative_input_file_list(user, narrative)
     output_train_filename = config.get_user_narrative_preprocess_output_train_filename(user, narrative)
@@ -86,18 +79,33 @@ def module_narrative_preprocess(config, user, narrative):
     globals_dict = globals()
     if npp_class_name in globals_dict:
         npp_class = globals_dict[npp_class_name]
-        nppc = npp_class(input_filename_list, output_train_filename, output_eval_filename, train_split, scene_limit) # clean
+        nppc = npp_class(
+            narrative_filename_list=input_filename_list,
+            narrative_preprocessed_train_filename=output_train_filename,
+            narrative_preprocessed_eval_filename=output_eval_filename,
+            train_split=train_split,
+            scene_limit=scene_limit
+        )
         nppc.process()
         # nppc.dump()
     else:
         raise Exception(ValueError, "class name specified in configuration file does not exist")
     print("Narrative preprocess complete")
 
-def module_narrative_scenes_llm_preprocess(config, user, narrative):
-    """Preprocess (via LLM) the narrative scenes data for the given user and narrative.
-    :param type Config, config: The configuration object.
-    :param type str, user: The user/author identifier.
-    :param type str, narrative: The narrative identifier.
+def module_narrative_scenes_llm_preprocess(config: Config, user: str, narrative: str) -> None:
+    """
+    Preprocess (via LLM) the narrative scenes data for the given user and narrative.
+
+    This function uses an LLM to analyze and enhance narrative scenes with metadata
+    such as tone, summaries, character descriptions, etc.
+
+    Parameters:
+        config (Config): The configuration object with processing settings.
+        user (str): The user/author identifier.
+        narrative (str): The narrative identifier.
+
+    Returns:
+        None
     """
     train_input_file = config.get_user_narrative_preprocess_output_train_filename(user, narrative)
     eval_input_file = config.get_user_narrative_preprocess_output_eval_filename(user, narrative)
@@ -105,114 +113,228 @@ def module_narrative_scenes_llm_preprocess(config, user, narrative):
     eval_output_file = config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative)
 
     model_id = config.get_user_narrative_scenes_llm_preprocess_model_id(user)
-    model_name = config.get_model_inference_name(model_id)
     clean = config.get_user_narrative_scenes_llm_preprocess_clean(user)
     author_name = config.get_user_author_name(user)
     max_input_tokens = config.get_model_max_input_tokens(model_id)
     max_output_tokens = config.get_model_max_output_tokens(model_id)
+    inference_name = config.get_model_inference_name(model_id)
 
-    api_obj = open_api_object(config, model_id, 'inference')
-    llmp = LLMNarrativeScenesPreprocessing(clean, user, narrative, author_name, api_obj, train_input_file, eval_input_file, 
-                                           train_output_file, eval_output_file, max_input_tokens, max_output_tokens)
+    api_obj = open_api_object(config, model_id, model_name=inference_name)
+    # llmp = LLMNarrativeScenesPreprocessing(clean, user, narrative, author_name, api_obj, train_input_file, eval_input_file,
+    #                                        train_output_file, eval_output_file, max_input_tokens, max_output_tokens)
+    if clean:
+        llmp = LLMNarrativeScenesPreprocessing(
+            api_obj=api_obj,
+            narrative=narrative,
+            author_name=author_name,
+            input_train_filename=train_input_file,
+            input_eval_filename=eval_input_file,
+            output_train_filename=train_output_file,
+            output_eval_filename=eval_output_file,
+            max_output_tokens=max_output_tokens
+        )
+    else:
+        llmp = LLMNarrativeScenesPreprocessing(
+            narrative=narrative,
+            author_name=author_name,
+            api_obj=api_obj,
+            input_train_filename=train_output_file, # not clean uses output files as input
+            input_eval_filename=eval_output_file, # not clean uses output files as input
+            output_train_filename=train_output_file,
+            output_eval_filename=eval_output_file,
+            max_output_tokens=max_output_tokens
+        )
     scene_limit = config.get_user_narrative_scenes_llm_preprocess_scene_limit_per_narrative(user)
     llmp.update_scene_list(scene_limit)
     print("Narrative scenes LLM preprocess complete")
 
-def module_narrative_into_vector_db(config, vector_db, user, narrative):
-    """Place the narrative data into the milvus vector database.
-    :param type Config, config: The configuration object.
-    :param type VectorDBMilvus, vector_db: The milvus vector database object.
-    :param type str, user: The user/author identifier.
-    :param type str, narrative: The narrative identifier.
+def module_narrative_into_vector_db(config: Config, vector_db: VectorDBMilvus, user: str, narrative: str) -> None:
     """
-    model_id = config.get_user_narrative_scenes_llm_preprocess_model_id(user)
-    # model_name = config.get_model_inference_name(model_id)
-    input_train_file = config.get_user_narrative_scenes_llm_preprocess_output_train_filename(user, narrative)
-    input_eval_file = config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative)
+    Place the narrative data into the Milvus vector database.
+
+    This function loads processed narrative data and stores embeddings and metadata
+    in the vector database for later retrieval.
+
+    Parameters:
+        config (Config): The configuration object with database settings.
+        vector_db (VectorDBMilvus): The Milvus vector database object.
+        user (str): The user/author identifier.
+        narrative (str): The narrative identifier.
+
+    Returns:
+        None
+    """
+    input_train_filename = config.get_user_narrative_scenes_llm_preprocess_output_train_filename(user, narrative)
+    input_eval_filename = config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative)
     author_name = config.get_user_author_name(user)
 
-    # api_obj = open_api_object(config, model_id, 'inference')
+    llmnsp = LLMNarrativeScenesCollection(
+        narrative=narrative,
+        input_train_filename=input_train_filename,
+        input_eval_filename=input_eval_filename,
+        vector_db=vector_db,
+        verbose=config.verbose
+    )
 
-    llmnsp = LLMNarrativeScenesCollection(user, narrative, author_name, input_train_file, input_eval_file, vector_db)
     llmnsp.build_vector_collection(config.get_user_narrative_into_vector_db_clean(user))
 
-def module_corpus_llm_fine_tuning(config, user, corpus):
-    """Fine-tune the LLM model for the given user and corpus.
-    :param type Config, config: The configuration object.
-    :param type str, user: The user/author identifier.
-    :param type list, corpus: The list of narratives for the user.
-    :param type int, maxwait: The maximum wait time (in seconds) for the fine-tuning process.
-    :return: None
+def module_corpus_llm_fine_tuning(config: Config, user: str, corpus: list) -> None:
+    """
+    Fine-tune the LLM model for the given user and corpus.
+
+    This function initiates the fine-tuning process on the specified model using
+    the preprocessed training data from the user's narrative corpus.
+
+    Parameters:
+        config (Config): The configuration object with fine-tuning settings.
+        user (str): The user/author identifier.
+        corpus (list): The list of narrative identifiers for the user.
+
+    Returns:
+        None
     """
     train_filename_list = [config.get_user_narrative_preprocess_output_train_filename(user, narrative) for narrative in corpus]
     fine_tune_filename = config.get_user_fine_tuned_filename(user)
     model_id = config.get_user_fine_tune_model_id(user)
-    # model_name = config.get_model_fine_tune_name(model_id)
-    api_obj = open_api_object(config, model_id, 'fine_tune')
+    model_name = config.get_model_fine_tune_name(model_id)
+    author_name = config.get_user_author_name(user)
+    api_obj = open_api_object(
+        config,
+        model_id,
+        author_name=author_name,
+        model_name=model_name,
+        details_uri=fine_tune_filename)
     if api_obj is None:
         print("API object is None")
         return
-    author_name = config.get_user_author_name(user)
     maxwait = config.get_user_fine_tune_maxwait(user)
-    api_obj.fine_tune_submit(train_filename_list, author_name)
-    print(api_obj.wait_fine_tuning_model(fine_tune_filename, maxwait))
+    api_obj.fine_tune_submit(train_filename_list)
+    print(api_obj.wait_fine_tuning_model(maxwait))
 
-def module_corpus_llm_fine_tuning_check(config, user):
-    """Check the status of the fine-tuning process for the given user and corpus.
-    :param type Config, config: The configuration object.
-    :param type str, user: The user/author identifier.
-    :param type list, corpus: The list of narratives for the user.
+def module_corpus_llm_fine_tuning_check(config: Config, user: str) -> None:
+    """
+    Check the status of the fine-tuning process for the given user.
+
+    This function allows checking the progress of an ongoing fine-tuning job
+    and saves model details when complete.
+
+    Parameters:
+        config (Config): The configuration object with fine-tuning settings.
+        user (str): The user/author identifier.
+
+    Returns:
+        None
     """
     model_id = config.get_user_fine_tune_model_id(user)
     fine_tune_filename = config.get_user_fine_tuned_filename(user)
-    api_obj = open_api_object(config, model_id, 'details_filename', fine_tune_filename)
+    maxwait = config.get_user_fine_tune_maxwait(user)
+    api_obj = open_api_object(config, model_id, details_uri=fine_tune_filename)
     if api_obj is None:
         print("API object is None")
         return
-    print(api_obj.wait_fine_tuning_model(fine_tune_filename, 0))
+    print(api_obj.wait_fine_tuning_model(maxwait))
 
-def module_narrative_scenes_build_test_set(config, user, narrative):
-    """Build the test set for the narrative scenes for the given user and narrative.
-    :param type Config, config: The configuration object.
-    :param type str, user: The user/author identifier.
-    :param type str, narrative: The narrative identifier.
+def module_narrative_scenes_build_test_set(config: Config, user: str, narrative: str) -> None:
     """
-    input_eval_file = config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative)
+    Build the test set for the narrative scenes for the given user and narrative.
 
-    output_filename = config.get_user_narrative_scenes_build_test_set_output_filename(user, narrative)
+    This function creates a test dataset by selecting a subset of scenes and
+    removing certain metadata to test the LLM's ability to reconstruct scenes.
 
-    llmnsp = LLMNarrativeScenesBuildTestCompose(user, narrative, input_eval_file, output_filename)
+    Parameters:
+        config (Config): The configuration object with test set settings.
+        user (str): The user/author identifier.
+        narrative (str): The narrative identifier.
+
+    Returns:
+        None
+    """
+    input_compose_filename = config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative)
+
+    output_compose_filename = config.get_user_narrative_scenes_build_test_set_output_filename(user, narrative)
     scene_limit = config.get_user_narrative_scenes_build_test_set_scene_limit(user)
-    llmnsp.build_test_compose_scene_input_file(output_filename, scene_limit)
+    verbose = config.verbose
+
+    llmnsp = LLMNarrativeScenesBuildTestCompose(
+        input_eval_filename=input_compose_filename, # yes, input conpose treated like input eval
+        output_compose_filename=output_compose_filename,
+        scene_limit=scene_limit,
+        verbose=config.verbose
+    )
+    llmnsp.build_test_compose_scene_input_file()
     print("Narrative scenes build test set complete")
 
-def module_compose_scene_llm_narrative_handler(config, vector_db, user, narrative):
+def module_compose_scene_llm_narrative_handler(config: Config, vector_db: VectorDBMilvus, user: str, narrative: str) -> None:
+    """
+    Handle the composition of narrative scenes using the LLM and vector database.
+
+    This function uses a fine-tuned LLM to compose new narrative scenes based on
+    input specifications, retrieving relevant context from the vector database.
+
+    Parameters:
+        config (Config): The configuration object with composition settings.
+        vector_db (VectorDBMilvus): The Milvus vector database object.
+        user (str): The user/author identifier.
+        narrative (str): The narrative identifier.
+
+    Returns:
+        None
+    """
     details_filename = config.get_user_fine_tuned_filename(user)
-    input_filename = config.get_user_narrative_compose_scene_llm_handler_input_filename(user, narrative)
-    output_filename = config.get_user_narrative_compose_scene_llm_handler_output_filename(user, narrative)
+    input_compose_filename = config.get_user_narrative_compose_scene_llm_handler_input_filename(user, narrative)
+    output_compose_filename = config.get_user_narrative_compose_scene_llm_handler_output_filename(user, narrative)
     model_id = config.get_user_narrative_compose_scene_llm_handler_model_id(user)
     # fine_tune_model_name = config.get_user_fine_tune_model_name(user)
     author_name = config.get_user_author_name(user)
-    api_obj = open_api_object(config, model_id, "details_filename", details_filename)
+    api_obj = open_api_object(config, model_id, details_uri=details_filename)
     max_input_tokens = config.get_model_max_input_tokens(model_id)
     max_output_tokens = config.get_model_max_output_tokens(model_id)
     input_train_filename = config.get_user_narrative_scenes_llm_preprocess_output_train_filename(user, narrative)
     input_eval_filename = config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative)
-    llmnsp = LLMNarrativeScenesCompose(user, narrative, author_name, api_obj, input_train_filename, input_eval_filename, 
-                                       input_filename, output_filename, max_input_tokens, max_output_tokens, vector_db) 
     scene_limit = config.get_user_narrative_compose_scene_llm_handler_scene_limit(user)
     recent_event_count = config.get_user_narrative_compose_scene_llm_handler_recent_event_count(user)
-    llmnsp.write_scenes(scene_limit, recent_event_count)
+    verbose = config.verbose
+
+    llmnsp = LLMNarrativeScenesCompose(
+        api_obj=api_obj,
+        narrative=narrative,
+        author_name=author_name,
+        input_train_filename=input_train_filename,
+        input_eval_filename=input_eval_filename,
+        input_compose_filename=input_compose_filename,
+        output_compose_filename=output_compose_filename,
+        max_input_tokens=max_input_tokens,
+        max_output_tokens=max_output_tokens,
+        vector_db=vector_db,
+        scene_limit=scene_limit,
+        recent_event_count=recent_event_count,
+        verbose=verbose
+    )
+    llmnsp.write_scenes()
     print("Narrative scenes compose complete")
 
-def main():
+def main() -> None:
     """
-    Main function to run the pipeline for determining optimal satellite imagery resolution.
-    This function handles command-line arguments, configuration loading, and the execution of various modules in the pipeline.
-    It orchestrates the entire process by calling the appropriate functions based on the configuration settings.
-    The pipeline includes preprocessing narratives, fine-tuning LLMs, processing narrative scenes, and handling vector databases.
-    The function also measures the duration of the operation for each user and narrative.
-    :return: None
+    Main function to run the narrative processing pipeline.
+
+    This function handles command-line arguments, configuration loading, and the
+    execution of various modules in the pipeline. It orchestrates the entire process
+    by calling the appropriate functions based on the configuration settings.
+
+    The pipeline includes:
+    - Preprocessing narratives
+    - Fine-tuning LLMs
+    - Processing narrative scenes
+    - Building vector databases
+    - Composing new narrative scenes
+
+    The function measures the duration of operations for each user and narrative.
+
+    Parameters:
+        None
+
+    Returns:
+        None
     """
     print("Running...")
 
@@ -233,7 +355,7 @@ def main():
 
     vector_db_filename = config.get_vector_db_filename()
     vector_db = None
-    
+
     users = config.get_user_list()
 
     for user in users:
@@ -272,7 +394,7 @@ def main():
         #     the tone of the scene
         #     the summary of the scene
         #     the characters in the scene (and their descriptions plus plot summary from their point of view)
-        #     the objects in the scene (and their descriptions plus plot summary from the object's point of view) 
+        #     the objects in the scene (and their descriptions plus plot summary from the object's point of view)
         #     the setting of the scene (and its description plus plot summary from the setting's point of view)
         for narrative in corpus:
             if config.run_narrative_scenes_llm_preprocess():

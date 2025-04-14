@@ -12,29 +12,64 @@ from narrative_preprocess import NarrativePreprocessResults
 
 class LLMNarrativeScenesHandler():
     """Base class for handling LLM interactions for narrative scenes."""
-    def __init__(self, user, narrative, author_name, api_obj, train_input_file, eval_input_file, 
-                 max_input_tokens=None, max_output_tokens=None):
-        """Initialize the LLMNarrativeScenesHandler with model and narrative details."""
-        print("Calling LLMNarrativeScenesHandler")
-        print(f"train_input_file: {train_input_file}")
-        print(f"eval_input_file: {eval_input_file}")
-        self.max_input_tokens = max_input_tokens
-        self.max_output_tokens = max_output_tokens
-        self.api_obj = api_obj
+    def __init__(self, input_filename_list: list[str], verbose: bool = False):
+        """Initialize the LLMNarrativeScenesHandler with model and narrative details.
+        Args:
+            user (str): User name.
+            narrative (str): Narrative name.
+            author_name (str): Author name.
+            api_obj (object): API object for LLM interaction.
+            input_train_filename (str): Path to the training input file.
+            input_eval_filename (str): Path to the evaluation input file.
+            max_input_tokens (int, optional): Maximum input tokens. Defaults to None.
+            max_output_tokens (int, optional): Maximum output tokens. Defaults to None.
+        """
 
-        self.user = user
-        self.narrative = narrative
-        self.author_name = author_name
+        self.verbose = verbose
+        # self.user = None
+        # self.narrative = None
+        # self.author_name = None
+        # self.api_obj = None
+        # self.input_train_filename = None
+        # self.input_eval_filename = None
+        # self.max_input_tokens = None
+        # self.max_output_tokens = None
+        # for key, value in kwargs.items():
+        #     setattr(self, key, value)
+        # self.max_input_tokens = max_input_tokens
+        # self.max_output_tokens = max_output_tokens
+        # self.api_obj = api_obj
+
+        # self.user = user
+        # self.narrative = narrative
+        # self.author_name = author_name
+
+        # self.input_train_filename = input_train_filename
+        # self.input_eval_filename = input_eval_filename
+
+        # if self.user is None or len(self.user) == 0:
+        #     raise ValueError("user is not set")
+        # if self.narrative is None or len(self.narrative) == 0:
+        #     raise ValueError("narrative is not set")
+        # # if self.author_name is None or len(self.author_name) == 0: # needs to be enforced in the caller
+        # #     raise ValueError("author_name is not set")
 
         self.preprocess_results = NarrativePreprocessResults()
+        if input_filename_list is not None:
+            for input_filename in input_filename_list:
+                if not os.path.exists(input_filename):
+                    raise ValueError(f"Input file {input_filename} does not exist.")
+                self.preprocess_results.load(input_filename)
 
-        self.train_input_file = train_input_file
-        self.eval_input_file = eval_input_file
+        # if self.input_train_filename is not None and os.path.exists(self.input_train_filename): # needs to be enforced in the caller
+        #     if self.verbose:
+        #         print("LLMNarrativeScenesHandler: Loading in input train file")
+        #     self.preprocess_results.load(self.input_train_filename)
+        # if self.input_eval_filename is not None and os.path.exists(self.input_eval_filename):
+        #     if self.verbose:
+        #         print("LLMNarrativeScenesHandler: Loading in input eval file")
+        #     self.preprocess_results.load(self.input_eval_filename)
 
-        if train_input_file is not None and os.path.exists(train_input_file):
-            print("Loading in input train file")
-            self.preprocess_results.load(train_input_file)
-        if eval_input_file is not None and os.path.exists(eval_input_file):
-            print("Loading in input eval file A")
-            self.preprocess_results.load(eval_input_file)
-
+        if verbose:
+            print("Calling LLMNarrativeScenesHandler")
+            print(f"input_files: {input_filename_list}")

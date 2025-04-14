@@ -3,8 +3,8 @@ run_corpus_llm_fine_tuning: false
 check_corpus_llm_fine_tuning: false
 run_narrative_scenes_llm_preprocess: false
 run_narrative_into_vector_db: false
-run_narrative_scenes_build_test_set: galse
-run_compose_scenes: false
+run_narrative_scenes_build_test_set: true
+run_compose_scenes: true
 
 models:
     gpt_4o_mini_api:
@@ -14,8 +14,14 @@ models:
             output: 16384
         inference:
             name: "gpt-4o-mini"
+            # max_tokens:
+            #     input: 111616
+            #     output: 16384
         fine_tune:
             name: "gpt-4o-mini-2024-07-18"
+            # max_tokens:
+            #     input: 183616
+            #     output: 16384
             method: "api"
             ext: "pkl"
     # Llama3_8B_4b:
@@ -41,18 +47,18 @@ users:
                 - Narrative_dcpfox_ZombieApocalypse
                 - Narrative_dcpfox_Fate
             scene_limit_per_narrative: 10 # for debugging
-            train_split: 0.9
+            train_split: 0.8 # 0.8 for debugging, 0.9 for production
             output_file_train_template: "{narrative}_train.json"
             output_file_eval_template: "{narrative}_eval.json"
         fine_tune:
             model: gpt_4o_mini_api
-            output_file_template: "{user}_{model}_2.{fine_tune_ext}"
+            output_file_template: "{user}_{model}_5.{fine_tune_ext}"
             maxwait: 3600 # number of seconds to wait for the fine-tuning job to complete, 0 (default) means no wait
             # regardless, after the maxwait time, the user muse periodically check the status of the fine-tuning job
         narrative_scenes_llm_preprocess:
             clean: true
             model: gpt_4o_mini_api
-            # scene_limit_per_narrative: 5 # for debugging
+            scene_limit_per_narrative: 10 # for debugging
             summaries_to_date: false # default true, set to false if you're planning on running summaries_llm_preprocess
             output_file_train_template: "{narrative}_llm_scenes_train.json"
             output_file_eval_template: "{narrative}_llm_scenes_eval.json"
@@ -68,7 +74,7 @@ users:
             test: true # default false
             scene_limit_per_narrative: 1 # for debugging
             recent_event_count: 20 # number of recent events to include in the prompt        
-           input_file_compose_template: "{narrative}_scenes_to_compose.json"
+            input_file_compose_template: "{narrative}_scenes_to_compose.json"
             output_file_compose_template: "{narrative}_scenes_composed.json"
 
 Narrative_dcpfox_ZombieApocalypse:
