@@ -12,27 +12,28 @@ from pymilvus import MilvusClient
 from pymilvus import model
 from tqdm import tqdm
 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Apr  4 05:27:26 2025
-
-@author: dfox
-"""
-import os
-from pymilvus import MilvusClient, model
-
 class VectorDBMilvus:
     """
-    Class to interact with a Milvus vector database.
-    This class provides methods to create collections, insert documents,
-    and perform searches in the database.
+    A vector database interface for Milvus to store and retrieve document embeddings.
+
+    This class provides methods to create collections, insert document embeddings,
+    and perform semantic searches within the Milvus vector database. It handles the
+    vector embedding process and maintains collection organization for narrative elements.
+
+    The class supports multiple document types within collections and ensures that
+    document IDs remain unique across insertions.
     """
-    def __init__(self, uri, embedding_function=pymilvus.model.DefaultEmbeddingFunction()):
+    def __init__(self, uri: str, embedding_function=pymilvus.model.DefaultEmbeddingFunction()) -> None:
         """
-        Initialize the VectorDB with a Milvus client, collection, and embedding function.
-        :param uri: type str, The URI of the Milvus database.
-        :param embedding_function: The embedding function to use for vectorization.
+        Initialize a connection to the Milvus vector database.
+
+        Sets up a client connection to the specified Milvus server and configures
+        the embedding function to use for converting text to vectors.
+
+        Parameters:
+            uri (str): Connection string for the Milvus server
+            embedding_function: Function to convert text to vector embeddings
+                               (defaults to DefaultEmbeddingFunction)
         """
         self.uri = uri
         # Initialize Milvus client
@@ -50,10 +51,15 @@ class VectorDBMilvus:
         #     collection_name=self.collection_name, dimension=self.embedding_function.dim
         # )
 
-    def create_collection(self, collection_name):
+    def create_collection(self, collection_name: str) -> None:
         """
-        Create a collection in the Milvus database.
-        :param collection_name: type str, The name of the collection to create.
+        Create a new collection in the Milvus database if it doesn't exist.
+
+        Creates a vector collection with dimensions matching the embedding function,
+        skipping creation if the collection already exists.
+
+        Parameters:
+            collection_name (str): Name of the collection to create
         """
         if self.client.has_collection(collection_name=collection_name):
             print(f"Collection {collection_name} already exists.")
@@ -66,10 +72,15 @@ class VectorDBMilvus:
         print(f"Collection {collection_name} created.")
         # self.collection_names.append(collection_name)
 
-    def delete_collection(self, collection_name):
+    def delete_collection(self, collection_name: str) -> None:
         """
-        Drop a collection from the Milvus database.
-        :param collection_name: type str, The name of the collection to drop.
+        Remove a collection from the Milvus database if it exists.
+
+        Deletes the specified collection and all its contents from the database,
+        with no effect if the collection doesn't exist.
+
+        Parameters:
+            collection_name (str): Name of the collection to delete
         """
         if not self.client.has_collection(collection_name=collection_name):
             print(f"Collection {collection_name} does not exist.")
@@ -80,11 +91,24 @@ class VectorDBMilvus:
         print(f"Collection {collection_name} deleted.")
         # self.collection_names.remove(collection_name)
 
-    def insert_documents(self, collection_name, doc_types):
+    def insert_documents(self, collection_name: str, doc_types: dict) -> dict:
         """
-        Insert documents into the collection after encoding them into vectors.
-        :param collection_name: type str, The name of the collection to insert documents into.
-        :param doc_types: type dict, A dictionary containing document types and their corresponding documents.
+        Convert documents to vector embeddings and insert them into a collection.
+
+        Processes multiple document types, converts their text to vector embeddings,
+        and inserts them into the specified collection with metadata including
+        document type and unique IDs.
+
+        Parameters:
+            collection_name (str): Name of the collection to insert documents into
+            doc_types (dict): Dictionary mapping document types to lists of document dicts,
+                             where each document contains at minimum 'id' and 'text' fields
+
+        Returns:
+            dict: Result information from the Milvus insert operation
+
+        Raises:
+            ValueError: If vector dimensions don't match or if duplicate IDs are found
         """
         data = []
         test_id_dict = {}
@@ -151,9 +175,25 @@ class VectorDBMilvus:
         print(f"Inserted {len(data)} documents into the collection.")
         return insert_res
 
-    def search(self, collection_name, prev_chron_scene_index, query_texts, limit=3):
+    def search(self, collection_name: str, prev_chron_scene_index: int, query_texts: list, limit: int = 3) -> list:
         """
-        Search the collection for the most relevant documents based on query texts.
+        Search for documents similar to the query texts, respecting chronological order.
+
+        Performs a semantic similarity search for the provided query texts, only
+        returning documents with IDs lower than a threshold based on the previous
+        chronological scene index (to avoid future information in searches).
+
+        Parameters:
+            collection_name (str): Name of the collection to search
+            prev_chron_scene_index (int): Maximum scene index to include in results
+            query_texts (list): List of text strings to search for
+            limit (int): Maximum number of results to return per query (default: 3)
+
+        Returns:
+            list: Search results with document matches and similarity scores
+
+        Raises:
+            ValueError: If search results are not in the expected format
         """
         query_vectors = self.embedding_function.encode_queries(query_texts)
         prev_id = (prev_chron_scene_index+1) * 1000
