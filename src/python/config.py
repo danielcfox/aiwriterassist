@@ -89,6 +89,12 @@ class Config:
             raise ValueError(f"Inference configuration not found for model ID {model_id}")
         return model_config['inference']
 
+    def _get_user_narrative_metadata_process_config(self, user):
+        """Get the metadata process configuration for the narrative."""
+        if 'narrative_metadata_process' not in self._get_user_config(user):
+            raise ValueError(f"Metadata process configuration not found for user {user}")
+        return self._get_user_config(user)['narrative_metadata_process']
+
     """End of internal methods"""
 
     def get_model_class(self, model_id):
@@ -379,6 +385,45 @@ class Config:
             return None
         return config['recent_event_count']
 
+    def get_user_narrative_compose_scene_llm_handler_links_filename(self, user, narrative):
+        """Get the links filename for the narrative compose scene LLM handler."""
+        config = self.get_user_narrative_compose_scene_llm_handler_config(user)
+        if self.verbose:
+            print(f"Compose config: {config}")
+        if 'links_file_template' not in config:
+            return None
+        links_basename_template = config['links_file_template']
+        links_directory = self.get_user_narratives_directory(user)
+        if not os.path.exists(links_directory):
+            raise ValueError(f"Links directory {links_directory} does not exist for user {user}")
+        if not os.path.isdir(links_directory):
+            raise ValueError(f"Links directory {links_directory} is not a directory for user {user}")
+        return os.path.join(links_directory, links_basename_template.format(narrative=narrative))
+
+    def get_user_narrative_compose_scene_llm_handler_generate_prompt_only(self, user):
+        """Get the generate prompt only flag for the narrative compose scene LLM handler."""
+        config = self.get_user_narrative_compose_scene_llm_handler_config(user)
+        if self.verbose:
+            print(f"Compose config: {config}")
+        if 'generate_prompt_only' not in config:
+            return False
+        return config['generate_prompt_only']
+
+    def get_user_narrative_compose_scene_request_log_file_template(self, user, narrative):
+        """Get the request log filename for the narrative compose scene LLM handler."""
+        config = self.get_user_narrative_compose_scene_llm_handler_config(user)
+        if 'request_log_file_template' not in config:
+            return None
+        request_log_basename_template = config['request_log_file_template']
+        request_log_directory = self.get_user_narratives_directory(user)
+        if not os.path.exists(request_log_directory):
+            raise ValueError(f"Request log directory {request_log_directory} does not exist for user {user}")
+        if not os.path.isdir(request_log_directory):
+            raise ValueError(f"Request log directory {request_log_directory} is not a directory for user {user}")
+        return os.path.join(
+            request_log_directory, request_log_basename_template.format(narrative=narrative, chron_scene_index='chron_scene_index')
+        )
+
     def get_user_narrative_scenes_build_test_set_input_directory(self, user):
         """Get the input directory for the narrative scenes build test set."""
         config = self.get_user_narrative_scenes_build_test_set_config(user)
@@ -399,6 +444,19 @@ class Config:
         if 'output_file_template' not in config:
             raise ValueError(f"Output file template not found in config for user {user}")
         output_directory = self.get_user_narrative_scenes_build_test_set_output_directory(user)
+        if not os.path.exists(output_directory):
+            raise ValueError(f"Output directory {output_directory} does not exist for user {user}")
+        if not os.path.isdir(output_directory):
+            raise ValueError(f"Output directory {output_directory} is not a directory for user {user}")
+        output_basename_template = config['output_file_template']
+        return os.path.join(output_directory, output_basename_template.format(user=user, narrative=narrative))
+
+    def get_user_narrative_metadata_process_output_filename(self, user, narrative):
+        """Get the output filename for the narrative metadata process."""
+        config = self._get_user_narrative_metadata_process_config(user)
+        if 'output_file_template' not in config:
+            raise ValueError(f"Output file template not found in config for user {user}")
+        output_directory = self.get_user_cwd(user)
         if not os.path.exists(output_directory):
             raise ValueError(f"Output directory {output_directory} does not exist for user {user}")
         if not os.path.isdir(output_directory):
@@ -429,6 +487,12 @@ class Config:
         if 'run_narrative_scenes_llm_preprocess' not in self.config:
             return False
         return self.config['run_narrative_scenes_llm_preprocess']
+
+    def run_narrative_metadata_process(self):
+        """Check if narrative metadata processing should be run."""
+        if 'run_narrative_metadata_process' not in self.config:
+            return False
+        return self.config['run_narrative_metadata_process']
 
     def run_narrative_into_vector_db(self):
         """Check if narrative should be placed into the vector DB."""

@@ -5,12 +5,12 @@ Created on Mon Jan 20 05:01:31 2025
 
 @author: dfox
 """
-from llm_narrative_handler import LLMNarrativeScenesHandler
+from narrative_handler import NarrativeScenesHandler
 from vdb_milvus import VectorDBMilvus
 
 import os
 
-class LLMNarrativeScenesCollection(LLMNarrativeScenesHandler):
+class LLMNarrativeScenesCollection(NarrativeScenesHandler):
     """
     A handler for processing narrative scenes and storing them in a vector database.
 
@@ -137,50 +137,58 @@ class LLMNarrativeScenesCollection(LLMNarrativeScenesHandler):
         for i in range(len(self.preprocess_results.scene_list)):
             scene = self.preprocess_results.scene_list[i]
             scene_index = scene['chron_scene_index']
-            character_description_documents.extend(
-                [
-                {'id': ((scene_index * 1000) + index), 'text': f"{value['description']}"}
-                for index, value in enumerate(scene['named_characters'].values())
-                ]
-            )
+            index = 0
+            for name, value in scene['named_characters'].items():
+                character_description_documents.append(
+                    {'id': ((scene_index * 1000) + index), 'name': name, 'text': f"{value['description']}"}
+                    # for index, value in enumerate(scene['named_characters'].values())
+                    # ]
+                )
+                index += 1
             # character_scene_summary_documents.extend(
             #     [
             #     {'id': ((scene_index * 1000) + 100 + index), 'text': f"{value['plot_summary']}"}
             #     for index, value in enumerate(scene['named_characters'].values())
             #     ]
             # )
-            if 'objects' in scene:
-                object_description_documents.extend(
-                    [
-                    {'id': ((scene_index * 1000) + 200 + index), 'text': f"{value['description']}"}
-                    for index, value in enumerate(scene['objects'].values())
-                    ]
+            index = 0
+            for name, value in scene['objects'].items():
+                object_description_documents.append(
+                    {'id': ((scene_index * 1000) + 200 + index), 'name': name, 'text': f"{value['description']}"}
                 )
+                index += 1
+            # if 'objects' in scene:
+            #     object_description_documents.extend(
+            #         [
+            #         {'id': ((scene_index * 1000) + 200 + index), 'text': f"{value['description']}"}
+            #         for index, value in enumerate(scene['objects'].values())
+            #         ]
+            #     )
                 # object_scene_summary_documents.extend(
                 #     [
                 #     {'id': ((scene_index * 1000) + 300 + index), 'text': f"{value['plot_summary']}"}
                 #     for index, value in enumerate(scene['objects'].values())
                 #     ]
                 # )
-            setting_description_documents.extend(
-                [
-                {'id': ((scene_index * 1000) + 400 + index), 'text': f"{value['description']}"}
-                for index, value in enumerate(scene['settings'].values())
-                ]
-            )
+            index = 0
+            for name, value in scene['settings'].items():
+                setting_description_documents.append(
+                    {'id': ((scene_index * 1000) + 400 + index), 'name': name, 'text': f"{value['description']}"}
+                )
+                index += 1
+            # setting_description_documents.extend(
+            #     [
+            #     {'id': ((scene_index * 1000) + 400 + index), 'text': f"{value['description']}"}
+            #     for index, value in enumerate(scene['settings'].values())
+            #     ]
+            # )
             # setting_scene_summary_documents.extend(
             #     [
             #     {'id': ((scene_index * 1000) + 500 + index), 'text': f"{value['plot_summary']}"}
             #     for index, value in enumerate(scene['settings'].values())
             #     ]
             # )
-            if len(scene['plot_summary']) > 0:
-                scene_summary_documents.append(
-                    {
-                    'id': ((scene_index * 1000) + 600), 'text': f"{scene['plot_summary']}"
-                    }
-                )
-
+#
         # print(f"length of character descriptions is {len(character_description_documents)}")
         # print(f"length of character scene summaries is {len(character_scene_summary_documents)}")
         # print(f"length of object descriptions is {len(object_description_documents)}")
@@ -191,9 +199,11 @@ class LLMNarrativeScenesCollection(LLMNarrativeScenesHandler):
         doc_types = {"character_descriptions": character_description_documents,
                     #  "character_scene_summaries": character_scene_summary_documents,
                      "object_descriptions": object_description_documents,
-                     "setting_descriptions": setting_description_documents,
+                     "setting_descriptions": setting_description_documents
+        }
                     #  "setting_scene_summaries": setting_scene_summary_documents,
-                     "scene_summaries": scene_summary_documents}
+                    #  "scene_summaries": scene_summary_documents
+                    # }
 
         print(f"Insert documents into the collection")
         self.vector_db.insert_documents(self.narrative, doc_types)

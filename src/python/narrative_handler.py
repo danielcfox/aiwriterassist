@@ -10,10 +10,10 @@ import os
 
 from narrative_preprocess import NarrativePreprocessResults
 
-class LLMNarrativeScenesHandler():
+class NarrativeScenesHandler():
     """Base class for handling LLM interactions for narrative scenes."""
     def __init__(self, input_filename_list: list[str], verbose: bool = False):
-        """Initialize the LLMNarrativeScenesHandler with model and narrative details.
+        """Initialize the NarrativeScenesHandler with model and narrative details.
         Args:
             user (str): User name.
             narrative (str): Narrative name.
@@ -63,13 +63,13 @@ class LLMNarrativeScenesHandler():
 
         # if self.input_train_filename is not None and os.path.exists(self.input_train_filename): # needs to be enforced in the caller
         #     if self.verbose:
-        #         print("LLMNarrativeScenesHandler: Loading in input train file")
+        #         print("NarrativeScenesHandler: Loading in input train file")
         #     self.preprocess_results.load(self.input_train_filename)
         # if self.input_eval_filename is not None and os.path.exists(self.input_eval_filename):
         #     if self.verbose:
-        #         print("LLMNarrativeScenesHandler: Loading in input eval file")
+        #         print("NarrativeScenesHandler: Loading in input eval file")
         #     self.preprocess_results.load(self.input_eval_filename)
 
         if verbose:
-            print("Calling LLMNarrativeScenesHandler")
+            print("Calling NarrativeScenesHandler")
             print(f"input_files: {input_filename_list}")

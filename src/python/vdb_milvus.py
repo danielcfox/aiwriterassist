@@ -135,7 +135,8 @@ class VectorDBMilvus:
                 if id in test_id_dict:
                     raise ValueError(f"Duplicate document ID found: {id}")
                 test_id_dict[id] = True
-                data.append({"id": id, "vector": vector, "text": docs[i], "subject": doc_type})
+                name = doc_dict.get("name", "")
+                data.append({"id": id, "vector": vector, "text": docs[i], "entity_name": name, "subject": doc_type})
                 # what are the other fields?
                 # "title": doc_dict.get("title", ""),
                 # "author": doc_dict.get("author", ""),
@@ -202,7 +203,7 @@ class VectorDBMilvus:
             data=query_vectors,
             filter=(f"id < {prev_id}"),
             limit=limit,
-            output_fields=["text", "subject"],
+            output_fields=["text", "subject", "entity_name"]
         )
         if not isinstance(results, list):
             raise ValueError("The search results must be a list.")

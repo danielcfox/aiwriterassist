@@ -395,24 +395,37 @@ class LLMOpenAIAPIHandler(LLMHandler):
             raise ValueError("temperature must be a float between 0.0 and 1.0.")
 
         if self.verbose:
-            print(f"Prompt:\n\n{prompt}\n\n")
+            print(f"Prompt length is {len(prompt)}")
         messages = [{"role": "system", "content": f"You are fiction writer '{self.author_name}'"},
                     {"role": "user", "content": f"Write a fiction scene in the style of the writer named '{self.author_name}'"},
                     {"role": "assistant", "content": prompt}
                     ]
 
+        model_name = self._get_model_name()
+        if self.verbose:
+            print(f"Using model {model_name}")
+
         completion = self.client.chat.completions.create(
-            model=self._get_model_name(),
+            model=model_name,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature
         )
 
+        # print completion status
+        if self.verbose:
+            print(f"Completion details: {completion}")
+            # print(f"Completion status: {completion.choices[0].finish_reason}")
+            # print(f"Completion usage: {completion.usage}")
+            # print(f"Completion model: {completion.model}")
+            # print(f"Completion prompt length: {completion.usage['prompt_tokens']}")
+            # print(f"Completion response length: {completion.usage['completion_tokens']}")
+            # print(f"Completion total length: {completion.usage['total_tokens']}")
         response = completion.choices[0].message.content.strip()
         cleaned_response = response.lstrip("```json").rstrip("```").strip()
         resp_wordlen = len(cleaned_response.split())
         if self.verbose:
-            print(f"Prompt Response (length {resp_wordlen} words):\n\n{cleaned_response}\n\n")
+            print(f"Prompt response length {resp_wordlen} words")
         return cleaned_response
 
     def _get_model_name(self):

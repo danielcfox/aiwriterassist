@@ -9,10 +9,10 @@ import json
 import os
 from tqdm import tqdm
 
-from llm_narrative_handler import LLMNarrativeScenesHandler
+from narrative_handler import NarrativeScenesHandler
 from llm_openai_api_handler import LLMOpenAIAPIHandler
 
-class LLMNarrativeScenesPreprocessing(LLMNarrativeScenesHandler):
+class LLMNarrativeScenesPreprocessing(NarrativeScenesHandler):
     """
     A handler for preprocessing narrative scenes using LLMs to extract structured metadata.
 

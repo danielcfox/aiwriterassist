@@ -2,9 +2,10 @@ run_narrative_preprocess: false
 run_corpus_llm_fine_tuning: false
 check_corpus_llm_fine_tuning: false
 run_narrative_scenes_llm_preprocess: false
+# run_narrative_metadata_process: false
 run_narrative_into_vector_db: false
-run_narrative_scenes_build_test_set: true
-run_compose_scenes: true
+run_narrative_scenes_build_test_set: false
+run_compose_scenes: false
 
 models:
     gpt_4o_mini_api:
@@ -45,7 +46,7 @@ users:
             class: NarrativePreprocessDCPFox
             corpus_narrative_list:
                 - Narrative_dcpfox_ZombieApocalypse
-                - Narrative_dcpfox_Fate
+                # - Narrative_dcpfox_Fate
             scene_limit_per_narrative: 10 # for debugging
             train_split: 0.8 # 0.8 for debugging, 0.9 for production
             output_file_train_template: "{narrative}_train.json"
@@ -62,6 +63,10 @@ users:
             summaries_to_date: false # default true, set to false if you're planning on running summaries_llm_preprocess
             output_file_train_template: "{narrative}_llm_scenes_train.json"
             output_file_eval_template: "{narrative}_llm_scenes_eval.json"
+        # narrative_metadata_process:
+        #     # input json files are all the output files from narrative_scenes_llm_preprocess
+        #     input_metadata_links_template: "{narrative}_metadata_links.yaml"
+        #     output_file_template: "{narrative}_metadata.yaml"
         narrative_into_vector_db:
             # input files are all the output files from narrative_scenes_llm_preprocess
             clean: true
@@ -72,10 +77,17 @@ users:
             # input files are all the output files from narrative_scenes_llm_preprocess
             model: gpt_4o_mini_api
             test: true # default false
+            previous_narrative_fraction: 0.5
+            # fraction of the prompt (after preamble) that contains the recent text of the narrative
+            # this means that (1 - the fraction) is the amount that comes from the RAG
             scene_limit_per_narrative: 1 # for debugging
-            recent_event_count: 20 # number of recent events to include in the prompt        
+            # recent_event_count: 20 # number of recent events to include in the prompt
             input_file_compose_template: "{narrative}_scenes_to_compose.json"
             output_file_compose_template: "{narrative}_scenes_composed.json"
+            links_file_template: "{narrative}_links.yaml"
+            generate_prompt_only: false # default false
+            request_log_file_template: "{narrative}_scene_{chron_scene_index}_request.txt"
+            lookback_scene_count_limit : 12
 
 Narrative_dcpfox_ZombieApocalypse:
     class: NarrativePreprocessDCPFoxZombieApocalypse

@@ -11,6 +11,11 @@ import json
 import os
 # import time
 from word2number import w2n
+import yaml
+
+def represent_list(dumper, data):
+    """ formatting for yaml """
+    return dumper.represent_sequence('tag:yaml.org,2002:seq', data, flow_style=True)
 
 class NarrativeScene:
     """
@@ -113,6 +118,7 @@ class NarrativePreprocessResults:
         self.at_scenenum = 0
         # self.protagonist = ''
         self.named_characters = {}
+        self.objects = {}
         self.settings = {}
         self.tones = {}
         self.plot_summary = ''
@@ -202,15 +208,61 @@ class NarrativePreprocessResults:
         Parameters:
             filename (str): Path to the output JSON file for evaluation data.
         """
-        cur_scene_list = self.scene_list
+        cur_scene_list = copy.deepcopy(self.scene_list)
         eval_scene_list = self.get_eval_scene_list()
         if len(eval_scene_list) == 0:
             return
         self.scene_list = eval_scene_list
         with open(filename, 'w') as fp:
             json.dump(self.__dict__, fp, indent = 4)
-        self.scene_list = cur_scene_list
+        self.scene_list = copy.deepcopy(cur_scene_list)
 
+    # def dump_idx(self, filename: str, idx_list: list[int]) -> None:
+    #     """
+    #     Save only evaluation scenes to a JSON file.
+
+    #     Temporarily filters the scene list to include only evaluation scenes,
+    #     saves this filtered data to the specified file, then restores the
+    #     original scene list.
+
+    #     Parameters:
+    #         filename (str): Path to the output JSON file for evaluation data.
+    #     """
+    #     cur_scene_list = copy.deepcopy(self.scene_list)
+    #     for idx in idx_list:
+    #         if idx >= len(self.scene_list):
+    #             raise ValueError(f"Index {idx} out of range for scene list.")
+    #     self.scene_list = [self.scene_list[idx] for idx in idx_list]
+    #     with open(filename, 'w') as fp:
+    #         json.dump(self.__dict__, fp, indent = 4)
+    #     self.scene_list = copy.deepcopy(cur_scene_list)
+
+    def dump_metadata(self, filename: str) -> None:
+        """
+        Save metadata information to a JSON file.
+
+        Serializes the metadata portion of the object (named characters,
+        settings, objects, and tones) to the specified file.
+
+        Parameters:
+            filename (str): Path to the output JSON file for metadata.
+        """
+        metadata = {}
+        if len(self.named_characters) == 0:
+            self.build_metadata_scene_list()
+            # self.build_metadata_no_scene_list()
+
+        metadata['named_characters'] = self.named_characters
+        metadata['settings'] = self.settings
+        metadata['objects'] = self.objects
+        metadata['tones'] = self.tones
+
+        yaml.add_representer(list, represent_list)
+
+        with open(filename, 'w') as fp:
+            yaml.dump(metadata, fp, default_flow_style=False, default_style=False, sort_keys=False)
+        # with open(filename, 'w') as fp:
+        #         yaml.dump(metadata, fp, default_flow_style=False, default_style=False, flow_style={tuple, list}, sort_keys=False)
 
     def load(self, filename: str) -> None:
         """
@@ -249,6 +301,7 @@ class NarrativePreprocessResults:
             cur_scene_index += 1
         if index < (len(new_scene_list)-1):
             self.scene_list.extend(new_scene_list[index:])
+        self.build_metadata_scene_list()
 
     def update(self, new_dict: dict) -> None:
         """
@@ -266,12 +319,101 @@ class NarrativePreprocessResults:
             self.named_characters.update(new_dict['named_characters'])
         if 'settings' in new_dict:
             self.settings.update(new_dict['settings'])
+        if 'objects' in new_dict:
+            self.objects.update(new_dict['objects'])
         if 'tones' in new_dict:
             self.tones.update(new_dict['tones'])
         if 'plot_summary' in new_dict:
             self.plot_summary = new_dict['plot_summary']
         if 'scene_list' in new_dict:
             self.scene_list.extend(new_dict['scene_list'])
+
+    def build_metadata_scene_list(self) -> None:
+        """
+        Build a list of metadata from the scene list.
+
+        Extracts named characters, settings, and objects from the scene list
+        and organizes them into a structured format for further processing.
+        It extracts all characters and places them in self.named_characters.
+        Each character is a key in the dictionay, and the value is the list
+        of scenes (chron_scene_index) in which the character appears.
+        The same is done for settings and objects.
+
+        Also extracts the tones from the scene list and places them in
+        self.tones. Each tone is a key in the dictionay, and the value is
+        the list of scenes (chron_scene_index) in which the tone appears.
+        This method is called after the scene list has been fully populated.
+        It is used to build a metadata scene list that can be used for
+        training and evaluation purposes.
+
+        Returns:
+            None
+        """
+        self.named_characters = {}
+        self.settings = {}
+        self.objects = {}
+        self.tones = {}
+        for scene in self.scene_list:
+            for character in scene['named_characters']:
+                if character not in self.named_characters:
+                    self.named_characters[character] = []
+                self.named_characters[character].append(scene['chron_scene_index'])
+            for setting in scene['settings']:
+                if setting not in self.settings:
+                    self.settings[setting] = []
+                self.settings[setting].append(scene['chron_scene_index'])
+            for obj in scene['objects']:
+                if obj not in self.objects:
+                    self.objects[obj] = []
+                self.objects[obj].append(scene['chron_scene_index'])
+            tone = scene['tone']
+            if scene['tone'] not in self.tones:
+                self.tones[tone] = []
+            self.tones[tone].append(scene['chron_scene_index'])
+
+        self.named_characters = {k: v for k, v in sorted(self.named_characters.items(), key=lambda item: item[0])}
+        self.settings = {k: v for k, v in sorted(self.settings.items(), key=lambda item: item[0])}
+        self.objects = {k: v for k, v in sorted(self.objects.items(), key=lambda item: item[0])}
+        self.tones = {k: v for k, v in sorted(self.tones.items(), key=lambda item: item[0])}
+
+
+
+    # def build_metadata_no_scene_list(self) -> None:
+    #     """
+    #     Build a metadata list without using the scene list.
+
+    #     This method is used to build a metadata list that can be used for
+    #     training and evaluation purposes. It extracts all characters and
+    #     places them in self.named_characters. Each character is a key in
+    #     the dictionay, and the value is the list of scenes (chron_scene_index)
+    #     in which the character appears. The same is done for settings and
+    #     objects.
+
+    #     Returns:
+    #         None
+    #     """
+    #     self.named_characters = {}
+    #     self.settings = {}
+    #     self.objects = {}
+    #     self.tones = {}
+    #     for scene in self.scene_list:
+    #         for character in scene['named_characters']:
+    #             if character not in self.named_characters:
+    #                 self.named_characters[character] = []
+    #         for setting in scene['settings']:
+    #             if setting not in self.settings:
+    #                 self.settings[setting] = []
+    #             self.settings[setting].append(scene['chron_scene_index'])
+    #         for obj in scene['objects']:
+    #             if obj not in self.objects:
+    #                 self.objects[obj] = []
+    #         tone = scene['tone']
+    #         if scene['tone'] not in self.tones:
+    #             self.tones[tone] = []
+    #     self.named_characters = {k: v for k, v in sorted(self.named_characters.items(), key=lambda item: item[0])}
+    #     self.settings = {k: v for k, v in sorted(self.settings.items(), key=lambda item: item[0])}
+    #     self.objects = {k: v for k, v in sorted(self.objects.items(), key=lambda item: item[0])}
+    #     self.tones = {k: v for k, v in sorted(self.tones.items(), key=lambda item: item[0])}
 
 class NarrativePreprocess:
     """

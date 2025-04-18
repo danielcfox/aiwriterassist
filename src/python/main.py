@@ -17,6 +17,7 @@ from llm_narrative_compose import LLMNarrativeScenesCompose
 from llm_narrative_preprocessing import LLMNarrativeScenesPreprocessing
 from llm_openai_api_handler import LLMOpenAIAPIHandler
 from narrative_compose_build_test import LLMNarrativeScenesBuildTestCompose
+from narrative_metadata_handler import NarrativeMetadataHandler
 from narrative_preprocess import NarrativePreprocessResults
 from narrative_preprocess_dcpfox import NarrativePreprocessDCPFoxZombieApocalypse, NarrativePreprocessDCPFoxFate
 from vdb_milvus import VectorDBMilvus
@@ -41,10 +42,11 @@ def open_api_object(config: Config, model_id: str, **kwargs) -> object:
     """
     details_uri = getattr(kwargs, 'details_uri', None)
     model_name = getattr(kwargs, 'model_name', None)
+    verbose = getattr(kwargs, 'verbose', False)
     api_class_name = config.get_model_class(model_id)
     api_class = globals()[api_class_name]
 
-    if config.verbose:
+    if verbose:
         print(f"model_id {model_id}")
         print(f"details_uri {details_uri}")
         print(f"model_name {model_name}")
@@ -119,7 +121,7 @@ def module_narrative_scenes_llm_preprocess(config: Config, user: str, narrative:
     max_output_tokens = config.get_model_max_output_tokens(model_id)
     inference_name = config.get_model_inference_name(model_id)
 
-    api_obj = open_api_object(config, model_id, model_name=inference_name)
+    api_obj = open_api_object(config, model_id, model_name=inference_name, verbose=config.verbose)
     # llmp = LLMNarrativeScenesPreprocessing(clean, user, narrative, author_name, api_obj, train_input_file, eval_input_file,
     #                                        train_output_file, eval_output_file, max_input_tokens, max_output_tokens)
     if clean:
@@ -147,6 +149,31 @@ def module_narrative_scenes_llm_preprocess(config: Config, user: str, narrative:
     scene_limit = config.get_user_narrative_scenes_llm_preprocess_scene_limit_per_narrative(user)
     llmp.update_scene_list(scene_limit)
     print("Narrative scenes LLM preprocess complete")
+
+# def module_narrative_metadata_process(config: Config, user: str, narrative: str) -> None:
+#     """
+#     Process the narrative metadata for the given user and narrative.
+
+#     This function loads the narrative metadata and processes it into a structured format
+#     for further analysis or storage.
+
+#     Parameters:
+#         config (Config): The configuration object with metadata settings.
+#         user (str): The user/author identifier.
+#         narrative (str): The narrative identifier.
+
+#     Returns:
+#         None
+#     """
+#     output_filename = config.get_user_narrative_metadata_process_output_filename(user, narrative)
+
+#     nmh = NarrativeMetadataHandler(
+#         input_train_filename=config.get_user_narrative_scenes_llm_preprocess_output_train_filename(user, narrative),
+#         input_eval_filename=config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative),
+#         output_narrative_metadata_filename=output_filename,
+#         verbose=config.verbose
+#     )
+#     nmh.dump_narrative_metadata()
 
 def module_narrative_into_vector_db(config: Config, vector_db: VectorDBMilvus, user: str, narrative: str) -> None:
     """
@@ -203,7 +230,9 @@ def module_corpus_llm_fine_tuning(config: Config, user: str, corpus: list) -> No
         model_id,
         author_name=author_name,
         model_name=model_name,
-        details_uri=fine_tune_filename)
+        details_uri=fine_tune_filename,
+        verbose=config.verbose
+    )
     if api_obj is None:
         print("API object is None")
         return
@@ -228,7 +257,7 @@ def module_corpus_llm_fine_tuning_check(config: Config, user: str) -> None:
     model_id = config.get_user_fine_tune_model_id(user)
     fine_tune_filename = config.get_user_fine_tuned_filename(user)
     maxwait = config.get_user_fine_tune_maxwait(user)
-    api_obj = open_api_object(config, model_id, details_uri=fine_tune_filename)
+    api_obj = open_api_object(config, model_id, details_uri=fine_tune_filename, verbose=config.verbose)
     if api_obj is None:
         print("API object is None")
         return
@@ -286,14 +315,19 @@ def module_compose_scene_llm_narrative_handler(config: Config, vector_db: Vector
     model_id = config.get_user_narrative_compose_scene_llm_handler_model_id(user)
     # fine_tune_model_name = config.get_user_fine_tune_model_name(user)
     author_name = config.get_user_author_name(user)
-    api_obj = open_api_object(config, model_id, details_uri=details_filename)
+    api_obj = open_api_object(config, model_id, details_uri=details_filename, verbose=config.verbose)
     max_input_tokens = config.get_model_max_input_tokens(model_id)
     max_output_tokens = config.get_model_max_output_tokens(model_id)
     input_train_filename = config.get_user_narrative_scenes_llm_preprocess_output_train_filename(user, narrative)
     input_eval_filename = config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative)
-    scene_limit = config.get_user_narrative_compose_scene_llm_handler_scene_limit(user)
-    recent_event_count = config.get_user_narrative_compose_scene_llm_handler_recent_event_count(user)
+    scene_compose_limit = config.get_user_narrative_compose_scene_llm_handler_scene_limit(user)
+    # recent_event_count = config.get_user_narrative_compose_scene_llm_handler_recent_event_count(user)
+    links_filename = config.get_user_narrative_compose_scene_llm_handler_links_filename(user, narrative)
+    generate_prompt_only = config.get_user_narrative_compose_scene_llm_handler_generate_prompt_only(user)
+    request_log_file_template = config.get_user_narrative_compose_scene_request_log_file_template(user, narrative)
     verbose = config.verbose
+    if verbose:
+        print(f"links_filename {links_filename}")
 
     llmnsp = LLMNarrativeScenesCompose(
         api_obj=api_obj,
@@ -306,8 +340,12 @@ def module_compose_scene_llm_narrative_handler(config: Config, vector_db: Vector
         max_input_tokens=max_input_tokens,
         max_output_tokens=max_output_tokens,
         vector_db=vector_db,
-        scene_limit=scene_limit,
-        recent_event_count=recent_event_count,
+        scene_limit=scene_compose_limit,
+        links_filename=links_filename,
+        # recent_event_count=recent_event_count,
+        previous_narrative_fraction=0.5,
+        generate_prompt_only=generate_prompt_only,
+        request_log_file_template=request_log_file_template,
         verbose=verbose
     )
     llmnsp.write_scenes()
@@ -399,6 +437,11 @@ def main() -> None:
         for narrative in corpus:
             if config.run_narrative_scenes_llm_preprocess():
                 module_narrative_scenes_llm_preprocess(config, user, narrative)
+
+        # This step processes the narrative metadata and saves it to a file
+        # for narrative in corpus:
+        #     if config.run_narrative_metadata_process():
+        #         module_narrative_metadata_process(config, user, narrative)
 
         # The vector database is used to store the metadata for each scene in the narrative
         # This step must be run after the LLM preprocessing step,

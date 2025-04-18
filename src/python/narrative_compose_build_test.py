@@ -9,10 +9,10 @@ import copy
 import os
 import random
 
-from llm_narrative_handler import LLMNarrativeScenesHandler
+from narrative_handler import NarrativeScenesHandler
 from narrative_preprocess import NarrativePreprocessResults
 
-class LLMNarrativeScenesBuildTestCompose(LLMNarrativeScenesHandler):
+class LLMNarrativeScenesBuildTestCompose(NarrativeScenesHandler):
     """
     A handler for building test input files for narrative scene composition.
 
