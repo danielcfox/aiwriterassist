@@ -205,7 +205,7 @@ def module_narrative_into_vector_db(config: Config, vector_db: VectorDBMilvus, u
 
     llmnsp.build_vector_collection(config.get_user_narrative_into_vector_db_clean(user))
 
-def module_corpus_llm_fine_tuning(config: Config, user: str, corpus: list) -> None:
+def module_corpus_llm_fine_tuning(config: Config, user: str, corpus: list[str], vector_db: VectorDBMilvus) -> None:
     """
     Fine-tune the LLM model for the given user and corpus.
 
@@ -220,24 +220,71 @@ def module_corpus_llm_fine_tuning(config: Config, user: str, corpus: list) -> No
     Returns:
         None
     """
-    train_filename_list = [config.get_user_narrative_preprocess_output_train_filename(user, narrative) for narrative in corpus]
+    if vector_db is None:
+        raise Exception(ValueError, "vector_db is None")
+    # train_filename_list = [config.get_user_narrative_preprocess_output_train_filename(user, narrative) for narrative in corpus]
     fine_tune_filename = config.get_user_fine_tuned_filename(user)
     model_id = config.get_user_fine_tune_model_id(user)
     model_name = config.get_model_fine_tune_name(model_id)
     author_name = config.get_user_author_name(user)
+    generate_prompt_only = config.get_user_fine_tune_generate_prompt_only(user)
+    fine_tune_submit_filename = config.get_user_fine_tune_submit_filename(user)
     api_obj = open_api_object(
         config,
         model_id,
         author_name=author_name,
         model_name=model_name,
         details_uri=fine_tune_filename,
+        generate_prompt_only=generate_prompt_only,
+        fine_tune_submit_filename=fine_tune_submit_filename,
         verbose=config.verbose
     )
     if api_obj is None:
         print("API object is None")
         return
     maxwait = config.get_user_fine_tune_maxwait(user)
-    api_obj.fine_tune_submit(train_filename_list)
+    lookback_scene_limit_count = config.get_user_narrative_compose_scene_llm_handler_lookback_scene_limit_count(user)
+    # build the fine-tuning dataset
+    # details_filename = config.get_user_fine_tuned_filename(user)
+    # model_id = config.get_user_narrative_compose_scene_llm_handler_model_id(user)
+    # fine_tune_model_name = config.get_user_fine_tune_model_name(user)
+    # author_name = config.get_user_author_name(user)
+    # api_obj = open_api_object(config, model_id, details_uri=details_filename, verbose=config.verbose)
+    max_input_tokens = config.get_model_max_input_tokens(model_id)
+    max_output_tokens = config.get_model_max_output_tokens(model_id)
+
+    corpus_train_prompt_list = []
+    for narrative in corpus:
+        # input_compose_filename = config.get_user_narrative_compose_scene_llm_handler_input_filename(user, narrative)
+        # output_compose_filename = config.get_user_narrative_compose_scene_llm_handler_output_filename(user, narrative)
+        input_train_filename = config.get_user_narrative_scenes_llm_preprocess_output_train_filename(user, narrative)
+        input_eval_filename = config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative)
+        # scene_compose_limit = config.get_user_narrative_compose_scene_llm_handler_scene_limit(user)
+        # recent_event_count = config.get_user_narrative_compose_scene_llm_handler_recent_event_count(user)
+        links_filename = config.get_user_narrative_compose_scene_llm_handler_links_filename(user, narrative)
+        # request_log_file_template = config.get_user_narrative_compose_scene_request_log_file_template(user, narrative)
+        verbose = config.verbose
+        if verbose:
+            print(f"links_filename {links_filename}")
+
+        lnsc = LLMNarrativeScenesCompose(
+            api_obj=api_obj,
+            narrative=narrative,
+            author_name=author_name,
+            input_train_filename=input_train_filename,
+            input_eval_filename=input_eval_filename,
+            max_input_tokens=max_input_tokens,
+            max_output_tokens=max_output_tokens,
+            vector_db=vector_db,
+            links_filename=links_filename,
+            lookback_scene_limit_count=lookback_scene_limit_count,
+            previous_narrative_fraction=0.5,
+            generate_prompt_only=generate_prompt_only,
+            verbose=verbose
+        )
+        corpus_train_prompt_list.extend(lnsc.get_fine_tune_narrative_prompt_response_list())
+
+    api_obj.fine_tune_submit(corpus_train_prompt_list, author_name=author_name, generate_prompt_only=generate_prompt_only)
     print(api_obj.wait_fine_tuning_model(maxwait))
 
 def module_corpus_llm_fine_tuning_check(config: Config, user: str) -> None:
@@ -315,6 +362,7 @@ def module_compose_scene_llm_narrative_handler(config: Config, vector_db: Vector
     model_id = config.get_user_narrative_compose_scene_llm_handler_model_id(user)
     # fine_tune_model_name = config.get_user_fine_tune_model_name(user)
     author_name = config.get_user_author_name(user)
+    lookback_scene_limit_count = config.get_user_narrative_compose_scene_llm_handler_lookback_scene_limit_count(user)
     api_obj = open_api_object(config, model_id, details_uri=details_filename, verbose=config.verbose)
     max_input_tokens = config.get_model_max_input_tokens(model_id)
     max_output_tokens = config.get_model_max_output_tokens(model_id)
@@ -340,9 +388,9 @@ def module_compose_scene_llm_narrative_handler(config: Config, vector_db: Vector
         max_input_tokens=max_input_tokens,
         max_output_tokens=max_output_tokens,
         vector_db=vector_db,
-        scene_limit=scene_compose_limit,
+        scene_compose_limit=scene_compose_limit,
         links_filename=links_filename,
-        # recent_event_count=recent_event_count,
+        lookback_scene_limit_count=lookback_scene_limit_count,
         previous_narrative_fraction=0.5,
         generate_prompt_only=generate_prompt_only,
         request_log_file_template=request_log_file_template,
@@ -374,9 +422,9 @@ def main() -> None:
     Returns:
         None
     """
-    print("Running...")
-
     start = time.time()
+
+    print("Done with imports. Running...")
 
     random.seed(17)
 
@@ -392,7 +440,13 @@ def main() -> None:
     config = Config(args)
 
     vector_db_filename = config.get_vector_db_filename()
-    vector_db = None
+    if vector_db_filename is None or not os.path.exists(vector_db_filename):
+        vector_db = None
+    else:
+        vector_db = VectorDBMilvus(vector_db_filename)
+        if vector_db.open() is None:
+            print("vector_db file failed to open")
+            vector_db = None
 
     users = config.get_user_list()
 
@@ -409,20 +463,6 @@ def main() -> None:
         for narrative in corpus:
             if config.run_narrative_preprocess():
                 module_narrative_preprocess(config, user, narrative)
-
-        # The completion of the fine tuning step is a prerequisite for building the vector database and the scene compose step.
-        # Note that this module "kicks off" the fine tuning process only waits for the configured amount of time
-        # The fine tuning process is run in the background and will take some time to complete
-        # Therefore, the fine tuning process may not be complete after this module is run
-        # The scene compose step will fail if the fine tuning process is not complete
-        if config.run_corpus_llm_fine_tuning():
-            module_corpus_llm_fine_tuning(config, user, corpus)
-
-        # The fine tuning check step is a way for the user to check the status of the fine tuning process, if it did not complete
-        # in the time specified in the fine tuning step
-        # This module will also dump the details of the fine tuning process to a file
-        if config.check_corpus_llm_fine_tuning():
-            module_corpus_llm_fine_tuning_check(config, user)
 
         # The LLM needs to complete the preprocessing for each scene in the narrative
         # This step analyzes each scene in the narrative and generates metadata
@@ -452,7 +492,23 @@ def main() -> None:
                     raise Exception(ValueError, "vector_db_name not specified in configuration file")
                 if vector_db is None:
                     vector_db = VectorDBMilvus(vector_db_filename)
+                    if vector_db.open() is None:
+                        raise Exception(ValueError, "vector_db file failed to open")
                 module_narrative_into_vector_db(config, vector_db, user, narrative)
+
+        # The completion of the fine tuning step is a prerequisite for building the vector database and the scene compose step.
+        # Note that this module "kicks off" the fine tuning process only waits for the configured amount of time
+        # The fine tuning process is run in the background and will take some time to complete
+        # Therefore, the fine tuning process may not be complete after this module is run
+        # The scene compose step will fail if the fine tuning process is not complete
+        if config.run_corpus_llm_fine_tuning():
+            module_corpus_llm_fine_tuning(config, user, corpus, vector_db)
+
+        # The fine tuning check step is a way for the user to check the status of the fine tuning process, if it did not complete
+        # in the time specified in the fine tuning step
+        # This module will also dump the details of the fine tuning process to a file
+        if config.check_corpus_llm_fine_tuning():
+            module_corpus_llm_fine_tuning_check(config, user)
 
         # This step prepares the test set for scene composition
         # The test set is used to evaluate the performance of the LLM

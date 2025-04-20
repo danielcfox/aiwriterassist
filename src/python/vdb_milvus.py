@@ -6,7 +6,6 @@ Created on Fri Apr  4 05:27:26 2025
 @author: dfox
 """
 import numpy as np
-import os
 import pymilvus
 from pymilvus import MilvusClient
 from pymilvus import model
@@ -36,20 +35,28 @@ class VectorDBMilvus:
                                (defaults to DefaultEmbeddingFunction)
         """
         self.uri = uri
-        # Initialize Milvus client
-        self.client = MilvusClient(uri)
-        # self.collection_name = collection_name
         self.embedding_function = embedding_function
         self.collection_names = []
 
-        # Drop collection if it exists
-        # if self.client.has_collection(collection_name=self.collection_name):
-        #     self.client.drop_collection(collection_name=self.collection_name)
+    def open(self) -> MilvusClient:
+        """
+        Open a connection to the Milvus vector database.
 
-        # Create collection
-        # self.client.create_collection(
-        #     collection_name=self.collection_name, dimension=self.embedding_function.dim
-        # )
+        Returns:
+            MilvusClient: The client object for the Milvus database
+        """
+        # only support local file for now
+        self.client = MilvusClient(uri=self.uri)
+        if self.client is None:
+            print(f"Failed to connect to Milvus server at {self.uri}.")
+        # elif not self.client.is_connected():
+        #     print(f"Failed to connect to Milvus server at {self.uri}.")
+        # elif not self.client.is_alive():
+        #     print(f"Milvus server at {self.uri} is not alive.")
+        else:
+            return self.client
+
+        return None
 
     def create_collection(self, collection_name: str) -> None:
         """
@@ -61,6 +68,8 @@ class VectorDBMilvus:
         Parameters:
             collection_name (str): Name of the collection to create
         """
+        if self.client is None:
+            raise ValueError("Milvus client is not initialized. Please call open() first.")
         if self.client.has_collection(collection_name=collection_name):
             print(f"Collection {collection_name} already exists.")
             return
@@ -82,6 +91,8 @@ class VectorDBMilvus:
         Parameters:
             collection_name (str): Name of the collection to delete
         """
+        if self.client is None:
+            raise ValueError("Milvus client is not initialized. Please call open() first.")
         if not self.client.has_collection(collection_name=collection_name):
             print(f"Collection {collection_name} does not exist.")
             return
@@ -110,6 +121,8 @@ class VectorDBMilvus:
         Raises:
             ValueError: If vector dimensions don't match or if duplicate IDs are found
         """
+        if self.client is None:
+            raise ValueError("Milvus client is not initialized. Please call open() first.")
         data = []
         test_id_dict = {}
 
@@ -119,7 +132,6 @@ class VectorDBMilvus:
                 docs.append(doc_dict['text'])
             print(f"encoding {len(docs)} documents of type {doc_type}")
             for i in tqdm(range(len(docs)), desc=f"Encoding {doc_type} documents"):
-                # print(f"Encoding document {i+1}/{len(docs)}")
                 vectors = self.embedding_function.encode_documents([docs[i]])
                 # Ensure the vector is a list or numpy array
                 if not isinstance(vectors[0], (list, np.ndarray)):
@@ -137,7 +149,7 @@ class VectorDBMilvus:
                 test_id_dict[id] = True
                 name = doc_dict.get("name", "")
                 data.append({"id": id, "vector": vector, "text": docs[i], "entity_name": name, "subject": doc_type})
-                # what are the other fields?
+                # other fields?
                 # "title": doc_dict.get("title", ""),
                 # "author": doc_dict.get("author", ""),
                 # "date": doc_dict.get("date", ""),
@@ -196,6 +208,8 @@ class VectorDBMilvus:
         Raises:
             ValueError: If search results are not in the expected format
         """
+        if self.client is None:
+            raise ValueError("Milvus client is not initialized. Please call open() first.")
         query_vectors = self.embedding_function.encode_queries(query_texts)
         prev_id = (prev_chron_scene_index+1) * 1000
         results = self.client.search(

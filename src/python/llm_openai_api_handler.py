@@ -63,6 +63,9 @@ class LLMOpenAIAPIHandler(LLMHandler):
             ValueError: If required parameters are missing.
             FileNotFoundError: If specified details_uri doesn't exist.
         """
+        self.generate_prompt_only = kwargs.get("generate_prompt_only", False)
+        self.fine_tune_submit_filename = kwargs.get("submit_filename", "fine_tune_submit.jsonl")
+
         super().__init__(**kwargs)
 
     def _open(self) -> Optional[object]:
@@ -246,7 +249,7 @@ class LLMOpenAIAPIHandler(LLMHandler):
         # "in_progress"
         # "incomplete"
 
-    def fine_tune_submit(self, train_filename_list: List[str], **kwargs) -> Optional[object]:
+    def fine_tune_submit(self, corpus_train_prompt_list: List[tuple[str, str]], **kwargs) -> Optional[object]:
         """
         Submit a fine-tuning job based on training files.
 
@@ -265,32 +268,28 @@ class LLMOpenAIAPIHandler(LLMHandler):
             This method creates a JSONL training file from the input JSON files,
             uploads it to OpenAI, and initiates the fine-tuning process.
         """
-        author_name = kwargs.get("author_name", "Unknown Author")
+        # author_name = kwargs.get("author_name", "Unknown Author")
+        # generate_prompt_only = kwargs.get("generate_prompt_only", False)
+
         training_samples = []
         train_file: Optional[object] = None
 
-        for train_filename in train_filename_list:
-            with open(train_filename, "r", encoding="utf-8") as fp:
-                dataset = json.load(fp)
-
-            training_samples.extend(
-                [
-                    {"messages": [{"role": "system", "content": f"You are fiction writer '{author_name}'"},
-                                  {"role": "user", "content": f"Write a fiction scene in the style of the writer named '{author_name}'"},
-                                  {"role": "assistant", "content": scene["body"]}]
-                    }
-                    for scene in dataset['scene_list'] if len(scene["body"]) > 0
-                ]
+        for prompt, response in corpus_train_prompt_list:
+            # prompt, response = prompt_and_response
+            training_samples.append(
+                {"messages": [{"role": "system",
+                               "content": f"You are a fiction writer, writing in the style of '{self.author_name}'"},
+                                {"role": "user", "content": prompt},
+                                {"role": "assistant", "content": response}]
+                }
             )
 
-            print(f"From {train_filename}: Number of training samples: {len(training_samples)}")
-
-        with open("training_data.jsonl", "w", encoding="utf-8") as f:
+        with open(self.fine_tune_submit_filename, "w", encoding="utf-8") as f:
             for entry in training_samples:
                 f.write(json.dumps(entry) + "\n")
 
         try:
-            with open("training_data.jsonl", "rb") as f:
+            with open(self.fine_tune_submit_filename, "rb") as f:
                 train_file = openai.files.create(file=f, purpose="fine-tune")
                 if self.verbose:
                     print(f"Training file uploaded successfully! File ID: {train_file.id}")
@@ -298,10 +297,14 @@ class LLMOpenAIAPIHandler(LLMHandler):
             print(f"An error occurred: {e}")
             return None
         except FileNotFoundError:
-            print(f"Error: File not found at training_data.jsonl")
+            print(f"Error: File not found at {self.fine_tune_submit_filename}. Internal bug as this should be created by system.")
             return None
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
+            return None
+
+        if self.generate_prompt_only:
+            print(f"Fine-tuning job not submitted. Prompt only requested. Prompt is in {self.fine_tune_submit_filename}")
             return None
 
         self.details_model = self.client.fine_tuning.jobs.create(
@@ -396,9 +399,8 @@ class LLMOpenAIAPIHandler(LLMHandler):
 
         if self.verbose:
             print(f"Prompt length is {len(prompt)}")
-        messages = [{"role": "system", "content": f"You are fiction writer '{self.author_name}'"},
-                    {"role": "user", "content": f"Write a fiction scene in the style of the writer named '{self.author_name}'"},
-                    {"role": "assistant", "content": prompt}
+        messages = [{"role": "system", "content": f"You are a fiction writer, writing in the style of '{self.author_name}'"},
+                    {"role": "user", "content": prompt}
                     ]
 
         model_name = self._get_model_name()
@@ -415,12 +417,6 @@ class LLMOpenAIAPIHandler(LLMHandler):
         # print completion status
         if self.verbose:
             print(f"Completion details: {completion}")
-            # print(f"Completion status: {completion.choices[0].finish_reason}")
-            # print(f"Completion usage: {completion.usage}")
-            # print(f"Completion model: {completion.model}")
-            # print(f"Completion prompt length: {completion.usage['prompt_tokens']}")
-            # print(f"Completion response length: {completion.usage['completion_tokens']}")
-            # print(f"Completion total length: {completion.usage['total_tokens']}")
         response = completion.choices[0].message.content.strip()
         cleaned_response = response.lstrip("```json").rstrip("```").strip()
         resp_wordlen = len(cleaned_response.split())

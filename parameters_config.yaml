@@ -1,11 +1,10 @@
 run_narrative_preprocess: false
+run_narrative_scenes_llm_preprocess: false
+run_narrative_into_vector_db: false
 run_corpus_llm_fine_tuning: false
 check_corpus_llm_fine_tuning: false
-run_narrative_scenes_llm_preprocess: false
-# run_narrative_metadata_process: false
-run_narrative_into_vector_db: false
-run_narrative_scenes_build_test_set: false
-run_compose_scenes: false
+run_narrative_scenes_build_test_set: true
+run_compose_scenes: true
 
 models:
     gpt_4o_mini_api:
@@ -51,11 +50,6 @@ users:
             train_split: 0.8 # 0.8 for debugging, 0.9 for production
             output_file_train_template: "{narrative}_train.json"
             output_file_eval_template: "{narrative}_eval.json"
-        fine_tune:
-            model: gpt_4o_mini_api
-            output_file_template: "{user}_{model}_5.{fine_tune_ext}"
-            maxwait: 3600 # number of seconds to wait for the fine-tuning job to complete, 0 (default) means no wait
-            # regardless, after the maxwait time, the user muse periodically check the status of the fine-tuning job
         narrative_scenes_llm_preprocess:
             clean: true
             model: gpt_4o_mini_api
@@ -63,13 +57,16 @@ users:
             summaries_to_date: false # default true, set to false if you're planning on running summaries_llm_preprocess
             output_file_train_template: "{narrative}_llm_scenes_train.json"
             output_file_eval_template: "{narrative}_llm_scenes_eval.json"
-        # narrative_metadata_process:
-        #     # input json files are all the output files from narrative_scenes_llm_preprocess
-        #     input_metadata_links_template: "{narrative}_metadata_links.yaml"
-        #     output_file_template: "{narrative}_metadata.yaml"
         narrative_into_vector_db:
             # input files are all the output files from narrative_scenes_llm_preprocess
             clean: true
+        fine_tune:
+            model: gpt_4o_mini_api
+            output_file_template: "{user}_{model}_6.{fine_tune_ext}"
+            submit_filename: "fine_tune_submit.jsonl"
+            generate_prompt_only: false # default false
+            maxwait: 3600 # number of seconds to wait for the fine-tuning job to complete, 0 (default) means no wait
+            # regardless, after the maxwait time, the user muse periodically check the status of the fine-tuning job
         narrative_scenes_build_test_set:
             # input files are all the output files from narrative_scenes_llm_preprocess
             output_file_template: "{narrative}_scenes_to_compose.json"

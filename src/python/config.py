@@ -208,6 +208,19 @@ class Config:
         basename = output_file_template.format(user=user, model=model_id, fine_tune_ext=fine_tune_ext)
         return os.path.join(self.get_user_cwd(user), basename)
 
+    def get_user_fine_tune_submit_filename(self, user):
+        """Get the filename for the fine-tuned model."""
+        return self._get_user_fine_tune_config(user).get(
+            'submit_filename', os.path.join(self.get_user_cwd(user), 'fine_tune_submit.jsonl')
+        )
+
+    def get_user_fine_tune_generate_prompt_only(self, user):
+        """Get the generate prompt only flag from the user's fine-tune configuration."""
+        config = self._get_user_fine_tune_config(user)
+        if 'generate_prompt_only' not in config:
+            return False
+        return config['generate_prompt_only']
+
     def get_model_max_input_tokens(self, model_id):
         """Get the maximum input tokens for the fine-tuned model."""
         if 'max_tokens' not in self.config['models'][model_id]:
@@ -377,13 +390,13 @@ class Config:
             raise ValueError(f"Scene limit not found in config for user {user}")
         return config['scene_limit_per_narrative']
 
-    def get_user_narrative_compose_scene_llm_handler_recent_event_count(self, user):
+    def get_user_narrative_compose_scene_llm_handler_lookback_scene_limit_count(self, user):
         """Get the recent event count (number of previous scene summaries to include in the compose scene prompt)
         for the narrative compose scene LLM handler."""
         config = self.get_user_narrative_compose_scene_llm_handler_config(user)
-        if 'recent_event_count' not in config:
+        if 'lookback_scene_limit_count' not in config:
             return None
-        return config['recent_event_count']
+        return config['lookback_scene_limit_count']
 
     def get_user_narrative_compose_scene_llm_handler_links_filename(self, user, narrative):
         """Get the links filename for the narrative compose scene LLM handler."""
