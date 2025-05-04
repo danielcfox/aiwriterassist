@@ -17,7 +17,6 @@ from llm_narrative_compose import LLMNarrativeScenesCompose
 from llm_narrative_preprocessing import LLMNarrativeScenesPreprocessing
 from llm_openai_api_handler import LLMOpenAIAPIHandler
 from narrative_compose_build_test import LLMNarrativeScenesBuildTestCompose
-from narrative_metadata_handler import NarrativeMetadataHandler
 from narrative_preprocess import NarrativePreprocessResults
 from narrative_preprocess_dcpfox import NarrativePreprocessDCPFoxZombieApocalypse, NarrativePreprocessDCPFoxFate
 from vdb_milvus import VectorDBMilvus
@@ -122,8 +121,6 @@ def module_narrative_scenes_llm_preprocess(config: Config, user: str, narrative:
     inference_name = config.get_model_inference_name(model_id)
 
     api_obj = open_api_object(config, model_id, model_name=inference_name, verbose=config.verbose)
-    # llmp = LLMNarrativeScenesPreprocessing(clean, user, narrative, author_name, api_obj, train_input_file, eval_input_file,
-    #                                        train_output_file, eval_output_file, max_input_tokens, max_output_tokens)
     if clean:
         llmp = LLMNarrativeScenesPreprocessing(
             api_obj=api_obj,
@@ -149,31 +146,6 @@ def module_narrative_scenes_llm_preprocess(config: Config, user: str, narrative:
     scene_limit = config.get_user_narrative_scenes_llm_preprocess_scene_limit_per_narrative(user)
     llmp.update_scene_list(scene_limit)
     print("Narrative scenes LLM preprocess complete")
-
-# def module_narrative_metadata_process(config: Config, user: str, narrative: str) -> None:
-#     """
-#     Process the narrative metadata for the given user and narrative.
-
-#     This function loads the narrative metadata and processes it into a structured format
-#     for further analysis or storage.
-
-#     Parameters:
-#         config (Config): The configuration object with metadata settings.
-#         user (str): The user/author identifier.
-#         narrative (str): The narrative identifier.
-
-#     Returns:
-#         None
-#     """
-#     output_filename = config.get_user_narrative_metadata_process_output_filename(user, narrative)
-
-#     nmh = NarrativeMetadataHandler(
-#         input_train_filename=config.get_user_narrative_scenes_llm_preprocess_output_train_filename(user, narrative),
-#         input_eval_filename=config.get_user_narrative_scenes_llm_preprocess_output_eval_filename(user, narrative),
-#         output_narrative_metadata_filename=output_filename,
-#         verbose=config.verbose
-#     )
-#     nmh.dump_narrative_metadata()
 
 def module_narrative_into_vector_db(config: Config, vector_db: VectorDBMilvus, user: str, narrative: str) -> None:
     """
