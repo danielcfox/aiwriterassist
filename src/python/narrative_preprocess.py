@@ -3,6 +3,8 @@
 """
 Created on Fri Jan 17 10:16:54 2025
 
+Copyright 2025 Daniel C. Fox
+
 @author: dfox
 """
 import copy
