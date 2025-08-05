@@ -124,6 +124,12 @@ class Config:
             return None
         return self.config['vector_db_filename']
 
+    def get_gcs_service_account_key_json_filename(self):
+        """Get the GCS service account key JSON filename from the global configuration."""
+        if 'gcs_service_account_key_json_filename' not in self.config:
+            return None
+        return self.config['gcs_service_account_key_json_filename']
+
     def get_user_cwd(self, user):
         """Get the current working directory for the user."""
         user_config = self._get_user_config(user)

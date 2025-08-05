@@ -3,8 +3,8 @@ run_narrative_scenes_llm_preprocess: false
 run_narrative_into_vector_db: false
 run_corpus_llm_fine_tuning: false
 check_corpus_llm_fine_tuning: false
-run_narrative_scenes_build_test_set: true
-run_compose_scenes: true
+run_narrative_scenes_build_test_set: false
+run_compose_scenes: false
 
 models:
     gpt_4o_mini_api:
@@ -35,6 +35,7 @@ models:
     #         ext: "pt"
 
 vector_db_filename: "../../db/narrative_vector_db.db"
+gcs_service_account_key_json: "../../gcs/gcs_service_account_key.json"
 
 users:
     dcpfox:

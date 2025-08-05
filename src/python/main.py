@@ -29,7 +29,7 @@ def open_api_object(config: Config, model_id: str, **kwargs) -> object:
         config (Config): The configuration object containing model settings.
         model_id (str): The identifier of the model to create.
         **kwargs: Additional keyword arguments for model configuration:
-            - details_uri (str, optional): The URI/path to the model details file.
+            - details_filename (str, optional): The URI/path to the model details file.
             - model_name (str, optional): The name of the model to use.
             - author_name (str, optional): The name of the author for personalized models.
 
@@ -39,16 +39,16 @@ def open_api_object(config: Config, model_id: str, **kwargs) -> object:
     Raises:
         KeyError: If the model class specified in config doesn't exist in globals().
     """
-    details_uri = getattr(kwargs, 'details_uri', None)
-    model_name = getattr(kwargs, 'model_name', None)
-    verbose = getattr(kwargs, 'verbose', False)
+    # details_filename = getattr(kwargs, 'details_filename', None)
+    # model_name = getattr(kwargs, 'model_name', None)
+    # verbose = getattr(kwargs, 'verbose', False)
     api_class_name = config.get_model_class(model_id)
     api_class = globals()[api_class_name]
 
-    if verbose:
-        print(f"model_id {model_id}")
-        print(f"details_uri {details_uri}")
-        print(f"model_name {model_name}")
+    # if verbose:
+    #     print(f"model_id {model_id}")
+    #     print(f"details_filename {details_filename}")
+    #     print(f"model_name {model_name}")
 
     return api_class(**kwargs)
 
@@ -206,7 +206,7 @@ def module_corpus_llm_fine_tuning(config: Config, user: str, corpus: list[str], 
         model_id,
         author_name=author_name,
         model_name=model_name,
-        details_uri=fine_tune_filename,
+        details_filename=fine_tune_filename,
         generate_prompt_only=generate_prompt_only,
         fine_tune_submit_filename=fine_tune_submit_filename,
         verbose=config.verbose
@@ -221,7 +221,7 @@ def module_corpus_llm_fine_tuning(config: Config, user: str, corpus: list[str], 
     # model_id = config.get_user_narrative_compose_scene_llm_handler_model_id(user)
     # fine_tune_model_name = config.get_user_fine_tune_model_name(user)
     # author_name = config.get_user_author_name(user)
-    # api_obj = open_api_object(config, model_id, details_uri=details_filename, verbose=config.verbose)
+    # api_obj = open_api_object(config, model_id, details_filename=details_filename, verbose=config.verbose)
     max_input_tokens = config.get_model_max_input_tokens(model_id)
     max_output_tokens = config.get_model_max_output_tokens(model_id)
 
@@ -256,7 +256,7 @@ def module_corpus_llm_fine_tuning(config: Config, user: str, corpus: list[str], 
         )
         corpus_train_prompt_list.extend(lnsc.get_fine_tune_narrative_prompt_response_list())
 
-    api_obj.fine_tune_submit(corpus_train_prompt_list, author_name=author_name, generate_prompt_only=generate_prompt_only)
+    api_obj.fine_tune_submit(corpus_train_prompt_list)
     print(api_obj.wait_fine_tuning_model(maxwait))
 
 def module_corpus_llm_fine_tuning_check(config: Config, user: str) -> None:
@@ -276,7 +276,7 @@ def module_corpus_llm_fine_tuning_check(config: Config, user: str) -> None:
     model_id = config.get_user_fine_tune_model_id(user)
     fine_tune_filename = config.get_user_fine_tuned_filename(user)
     maxwait = config.get_user_fine_tune_maxwait(user)
-    api_obj = open_api_object(config, model_id, details_uri=fine_tune_filename, verbose=config.verbose)
+    api_obj = open_api_object(config, model_id, details_filename=fine_tune_filename, verbose=config.verbose)
     if api_obj is None:
         print("API object is None")
         return
@@ -335,7 +335,7 @@ def module_compose_scene_llm_narrative_handler(config: Config, vector_db: Vector
     # fine_tune_model_name = config.get_user_fine_tune_model_name(user)
     author_name = config.get_user_author_name(user)
     lookback_scene_limit_count = config.get_user_narrative_compose_scene_llm_handler_lookback_scene_limit_count(user)
-    api_obj = open_api_object(config, model_id, details_uri=details_filename, verbose=config.verbose)
+    api_obj = open_api_object(config, model_id, details_filename=details_filename, verbose=config.verbose)
     max_input_tokens = config.get_model_max_input_tokens(model_id)
     max_output_tokens = config.get_model_max_output_tokens(model_id)
     input_train_filename = config.get_user_narrative_scenes_llm_preprocess_output_train_filename(user, narrative)
