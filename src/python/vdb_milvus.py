@@ -3,6 +3,8 @@
 """
 Created on Fri Apr  4 05:27:26 2025
 
+Copyright 2025 Daniel C. Fox
+
 @author: dfox
 """
 import numpy as np
