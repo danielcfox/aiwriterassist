@@ -50,13 +50,12 @@ class LLMAPITrainingState:
         self.training_job_object: Optional[Any] = None
         self.api_type: Optional[str] = None
 
-    def set(self, base_model_name: str, training_client: object, training_data_id: str, training_job_object: Any, api_type: str = "unknown") -> None:
+    def set(self, base_model_name: str, training_data_id: str, training_job_object: Any, api_type: str = "unknown") -> None:
         """
         Set the training state from API response objects.
 
         Parameters:
             base_model_name (str): Name of the base model being fine-tuned
-            training_client (object): API client object (OpenAI client or Vertex AI client)
             training_data_id (str): Identifier for training data (file ID or filename)
             training_job_object (Any): Training job object returned from API
             api_type (str): Type of API ('openai', 'vertexai', etc.)
@@ -66,7 +65,6 @@ class LLMAPITrainingState:
         self.training_job_object = training_job_object
         self.api_type = api_type.lower()
         self.updated_at = datetime.now()
-        self.client = training_client
 
         # Extract common fields based on API type
         if self.api_type == "openai":
@@ -74,9 +72,8 @@ class LLMAPITrainingState:
         elif self.api_type == "vertexai":
             self._extract_vertexai_fields()
         else:
-            raise ValueError(f"Unsupported API type: {self.api_type}")
             # Generic extraction - try common field names
-            # self._extract_generic_fields()
+            self._extract_generic_fields()
 
     def _extract_openai_fields(self) -> None:
         """Extract fields from OpenAI FineTuningJob object."""
@@ -128,23 +125,23 @@ class LLMAPITrainingState:
         if error_obj:
             self.error_message = getattr(error_obj, 'message', str(error_obj))
 
-    # def _extract_generic_fields(self) -> None:
-    #     """Extract fields using common field names."""
-    #     if self.training_job_object is None:
-    #         return
+    def _extract_generic_fields(self) -> None:
+        """Extract fields using common field names."""
+        if self.training_job_object is None:
+            return
 
-    #     # Try common field names
-    #     possible_id_fields = ['id', 'job_id', 'resource_name', 'name']
-    #     for field in possible_id_fields:
-    #         if hasattr(self.training_job_object, field):
-    #             self.job_id = getattr(self.training_job_object, field)
-    #             break
+        # Try common field names
+        possible_id_fields = ['id', 'job_id', 'resource_name', 'name']
+        for field in possible_id_fields:
+            if hasattr(self.training_job_object, field):
+                self.job_id = getattr(self.training_job_object, field)
+                break
 
-    #     possible_status_fields = ['status', 'state', 'job_status']
-    #     for field in possible_status_fields:
-    #         if hasattr(self.training_job_object, field):
-    #             self.status = getattr(self.training_job_object, field)
-    #             break
+        possible_status_fields = ['status', 'state', 'job_status']
+        for field in possible_status_fields:
+            if hasattr(self.training_job_object, field):
+                self.status = getattr(self.training_job_object, field)
+                break
 
     def is_pending(self) -> bool:
         """
@@ -183,7 +180,7 @@ class LLMAPITrainingState:
         failed_statuses = {'failed', 'JOB_STATE_FAILED', 'cancelled', 'error'}
         return self.status.lower() in {s.lower() for s in failed_statuses}
 
-    def dump(self, filepath: str) -> None:
+    def save(self, filepath: str) -> None:
         """
         Save the training state to a pickle file.
 
@@ -250,46 +247,6 @@ class LLMAPITrainingState:
         if updated_job_object is not None:
             self.training_job_object = updated_job_object
             self.set(self.base_model_name, self.training_data_id, updated_job_object, self.api_type)
-
-    def refresh_from_server(self, client: Any) -> None:
-        """
-        Retrieve the current training job state directly from the server.
-
-        This method fetches the latest job information from the respective API server
-        and updates the local state with the fresh data.
-
-        Parameters:
-            client (Any): API client object (OpenAI client or Vertex AI client)
-
-        Raises:
-            ValueError: If job_id is None or api_type is unknown
-            Exception: If API call fails
-        """
-        if self.job_id is None:
-            raise ValueError("Cannot refresh from server: job_id is None")
-
-        if self.api_type is None:
-            raise ValueError("Cannot refresh from server: api_type is not set")
-
-        try:
-            if self.api_type.lower() == "openai":
-                # Retrieve updated job object from OpenAI
-                updated_job_object = client.fine_tuning.jobs.retrieve(self.job_id)
-
-            elif self.api_type.lower() == "vertexai":
-                # Retrieve updated job object from Vertex AI
-                # Note: This assumes the client has a method to retrieve tuning jobs
-                # The exact method may vary depending on Vertex AI SDK version
-                updated_job_object = client.get_tuning_job(name=self.job_id)
-
-            else:
-                raise ValueError(f"Unknown API type: {self.api_type}")
-
-            # Update the local state with the fresh data
-            self.update_from_api(updated_job_object)
-
-        except Exception as e:
-            raise Exception(f"Failed to refresh training state from {self.api_type} server: {e}")
 
     def __str__(self) -> str:
         """String representation of the training state."""
