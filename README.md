@@ -1,8 +1,11 @@
 # aiwriterassist
 AI Assistant for Authors
 
-The current implementation is a **pipeline-based system**.  
+The current implementation is a **pipeline-based system** coded with Python 3.11.13.
+The vector database package used is Milvus.
+
 In progress is a transition to an **Agentic AI architecture** that will be more flexible, resilient, and scalable.
+
 
 ## Architecture Diagram
 
