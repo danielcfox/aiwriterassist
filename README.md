@@ -2,7 +2,8 @@
 AI Assistant for Authors
 
 The current implementation is a **pipeline-based system** coded with Python 3.11.13.
-The vector database package used is Milvus.
+The vector database package used is Milvus. It is a sample of the source code.
+The license states that you may only browse this code. You cannot run or download.
 
 In progress is a transition to an **Agentic AI architecture** that will be more flexible, resilient, and scalable.
 
