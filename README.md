@@ -5,7 +5,7 @@ The current implementation is a **pipeline-based system** coded with Python 3.11
 The vector database package used is Milvus. It is a sample of the source code.
 The license states that you may only browse this code. You cannot run or download.
 
-I developed a new architecture which is much more extensible and flexible:
+I developed a new architecture which is much more extensible and flexible. It has not been implemented yet.:
 
 1.	Orchestration Agent: executes specific use cases.
 1.1.	All use cases, though, need to involve a great deal of preprocessing of a Narrative. A Narrative is defined as the prose for a fictional story that may or may not encompasses one or more Books. A Book is simply a portion of the Narrative within a specific sequence of Books that form the entire Narrative.
