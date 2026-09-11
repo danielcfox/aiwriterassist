@@ -5,99 +5,63 @@ The current implementation is a **pipeline-based system** coded with Python 3.11
 The vector database package used is Milvus. It is a sample of the source code.
 The license states that you may only browse this code. You cannot run or download.
 
-In progress is a transition to an **Agentic AI architecture** that will be more flexible, resilient, and scalable.
+I developed a new architecture which is much more extensible and flexible:
 
-
-## Architecture Diagram
-
-The diagram below shows the architecture currently being developed.
-
-Some may argue this is not a “fully agentic” system, since the **Orchestrator Agent** is implemented as a **deterministic state machine**. However, the system as a whole is **non-deterministic** because it delegates key reasoning and generation steps to LLMs.  
-
-This design choice is deliberate:  
-- It keeps orchestration logic **transparent, testable, and debuggable**.  
-- It avoids unnecessary complexity at this stage.  
-- It ensures that as long as requirements are clear, the system executes predictably while still benefiting from the creative variability of LLMs.  
-
-In the future, if we add a **chatbot-style user interface** where the user can request arbitrary tasks, the Orchestrator Agent itself may evolve into a **non-deterministic, LLM-driven planner**. For now, a deterministic orchestrator offers the right balance between **simplicity** and **scalability**.
-
-```mermaid
-flowchart TD
-
-    %% ===== Frontend =====
-    subgraph Frontend
-        F[frontend_client]
-    end
-
-    %% ===== Orchestrator =====
-    subgraph Orchestrator
-        O[orchestrator_agent]
-    end
-
-    %% ===== AAA (future) =====
-    subgraph AAA
-        AAA_TOOL[aaa_policy_tool]
-    end
-
-    %% ===== Summary lane =====
-    subgraph Summary_Cluster
-        SA[summary_agent] --> SSA[scene_summary_agent]
-        SSA --> LPM1[llm_policy_tool]
-        LPM1 --> LT1[llm_tool]
-        SA --> MST1[metadata_storage_tool]
-    end
-
-    %% ===== Entity lane =====
-    subgraph Entity_Cluster
-        EA[entity_recognition_agent] --> SERA[scene_entity_recognition_agent]
-        SERA --> LPM2[llm_policy_tool]
-        LPM2 --> LT2[llm_tool]
-        EA --> MST2[metadata_storage_tool]
-    end
-
-    %% ===== Compose lane =====
-    subgraph Compose_Cluster
-        CA[compose_agent]
-        CA --> LPM3[llm_policy_tool]
-        LPM3 --> LT3[llm_tool]
-    end
-
-    %% ===== Fine-tuning lane =====
-    subgraph FineTuning_Cluster
-        FTA[fine_tuning_agent]
-        FTA --> Split[train_test_dataset_split_tool]
-        FTA --> Kickoff[kickoff_fine_tuning_task_tool]
-        FTA --> Status[status_fine_tuning_task_tool]
-        FTA --> Wait[wait_fine_tuning_task_tool]
-        Kickoff --> LPM4[llm_policy_tool] --> LT4[llm_tool]
-        Status  --> LPM5[llm_policy_tool] --> LT5[llm_tool]
-        Wait    --> LPM6[llm_policy_tool] --> LT6[llm_tool]
-    end
-
-    %% ===== RAG lane =====
-    subgraph RAG_Cluster
-        RAG[rag_agent]
-        RAG --> AddDoc[add_doc_tool]
-        RAG --> Retrieve[retrieve_docs_tool]
-        RAG --> VecDB[vector_db_tool]
-        RAG --> GraphDB[graph_db_tool]
-    end
-
-    %% ===== Format lane =====
-    subgraph Format_Cluster
-        BFT[book_format_tool]
-        BFT --> PDF[book_pdf_format_tool]
-        BFT --> DOCX[book_docx_format_tool]
-        BFT --> EPUB[book_epub_format_tool]
-        BFT --> TXT[book_txt_format_tool]
-    end
-
-    %% ===== Wiring =====
-    F --> O
-    O --> AAA_TOOL
-    O --> SA
-    O --> EA
-    O --> CA
-    O --> FTA
-    O --> RAG
-    O --> BFT
+1.	Orchestration Agent: executes specific use cases.
+1.1.	All use cases, though, need to involve a great deal of preprocessing of a Narrative. A Narrative is defined as the prose for a fictional story that may or may not encompasses one or more Books. A Book is simply a portion of the Narrative within a specific sequence of Books that form the entire Narrative.
+1.2.	A pre-defined set of use cases (like the Scene Generation use case above) would be a deterministic state machine. No sense in using an LLM where one is not required.
+1.3.	Other pre-defined use cases would be flagged as requiring an LLM to orchestrate.
+1.4.	User-created workflows asked for in a prompt would require an LLM to orchestrate.
+2.	Book Format Tool: Determinstic Python code specifically written for a given narrative (comprises several books in a series), or for a specific book. Each scene of the narrative (and it could be there are no scene breaks, but this is rare, and in this case it would be treated as one scene) would be treated as a separate document with an index indicating the order in the Narrative. If using a RAG, each scene would be chunked into multiple “scenes” with overlapped context if >10,000 words.
+3.	Entity Extraction Agent: extracts and outputs all entities, along with descriptions for each, for ONE scene. It will include identifying the point-of-view character. It will take as required input the full text of ONE scene. Optional input can include the list of entities already discovered in previous scenes, along with their summarized descriptions. It is the job of this agent to not only identify all entities in the scene, but to match up those entities with the ones already discovered in previous scenes. It will also determine if no match can be found, in which case the entity is treated as a new entity.
+4.	Summarization Agent: can summarize the following:
+4.1.	One or more entity descriptions into one description (essentially merging them all)
+4.2.	A scene (the generic scene summary)
+4.3.	A scene from the point-of-view of a specific character. (Note that the generic scene summary is the same as summary from the point-of-view of the point-of-view character).
+4.4.	One or more generic scene summaries (including summaries of summaries).
+4.4.1.	Since scenes may each be told from a different point-of-view, this overall summary is not specific to one character’s point-of-view.
+4.5.	One or more scene summaries (or summaries of scene summaries) from a specific character’s point-of-view. This would then be a summary of the narrative for that specific character only.
+4.6.	One or more scene summaries (or summaries of scene summaries) within a specific setting. This would then be a summary of the narrative for that specific setting only.
+4.7.	One or more scene summaries (or summaries of scene summaries) involving a specific object (like a magick sword). This would then be a summary of the narrative for that specific object only.
+5.	RAG Tool: 
+5.1.	Storage: Takes entity names and descriptions and creates embeddings (vectorization), and stores into the vector database each entity type (characters, settings, or objects) as a document type.
+5.2.	Retrieval: Takes entity names as the query text, for each doc type, and retrieves the top documents for each.
+6.	Author Style Training Pipeline: fine-tunes the weights of an LLM (closed-weight at first, then open-weight with QLoRA) for the purpose of composing new narrative scenes (via the Composition Agent). The tuning Narrative (or portion thereof) must be separate from the generating Narrative.
+6.1.	Provides examples of :
+6.1.1.	Input:
+6.1.1.1.	A summary of a specific scenes already written, making sure each entity (characters, settings, objects) in the scene is in the summary. NOTE: this summary will have been auto-generated by the Summarization Agent. It may or may not be retrieved by the RAG Tool.
+6.1.1.2.	A summarized description (generated by the Summarization Agent) of each entity in the scene. It may or may not be retrieved by the RAG Tool.
+6.1.1.3.	A lengthy summarization (up to approximate token budget) of the narrative up until the scene.
+6.1.2.	Label:
+6.1.2.1.	The next scene from the author.
+7.	Composition Agent: Composes scenes in an author’s own style
+7.1.	Input:
+7.1.1.	A summary of the scene to be composed
+7.1.2.	A list of entities in the scene
+7.1.3.	A summarized description of each entity as of the most recent scene. ALTERNATIVE: if the SA is not good at summarizing descriptions, then instead retrieve the top K descriptions by using the RAG Tool, IF it performs better.
+7.1.4.	A summary of the narrative up to the most recent scene, OR a summary of the portion of the narrative that involves all entities in the scene
+7.1.5.	The most recent portion of the Narrative that includes any entities (depending on tokenization capacity).
+7.2.	Output:
+7.2.1.	The composed scene
+8.	Evaluation Agent: LLM that judges the output of the composed narrative with the previous narrative.
+8.1.	That is, does the composed scene have any continuity errors, is it in the correct style, does it forward the Narrative well, does it obey the summary, is the first paragraph included accurately, does the story flow well from that paragraph, etc.?
+8.2.	Just as with my Judge Agent, there can be several metrics suites with many questions per suite.
+9.	Human Evaluator: Human that judges the output of the composed narrative with the previous narrative. Use the exact same criteria as the Evaluation Agent.
+10.	Scoring Tool: Scored based on both Evaluation Agent and the Human Evaluator. The number of produced scenes may be too much for the Human Evaluator, in which case many scenes may only have an Evaluation Agent score. Stakeholders would need to weigh and judge for themselves if an Evaluation Agent only score is sufficient.
+11.	Use Cases (All use the Orchestration Agent)
+11.1.	Scene Generation in Author’s Own Style.
+11.1.1.	Requires Book Format Tool, Entity Extraction Agent, Summarization Agent, Author Tuning Agent, Composition Agent
+11.1.2.	Orchestration Agent told to generate a new scene after a specific Narrative.
+11.1.2.1.	Will orchestrate all the required agents/tools, culminating in the Composition Agent (described below)
+11.1.2.2.	For each step below, it will skip them if the following are all true:
+11.1.2.2.1.	The required input exists.
+11.1.2.2.2.	The Narrative hasn’t changed.
+11.1.2.2.3.	A flag to re-calculate is not present. 
+11.1.2.3.	Step 1: Use the Book Format Tool to create a text file (or JSON, not sure of which yet) of the Narrative in a specific format easy to parse. Writes structured output to persistent storage.
+11.1.2.4.	Step 2: Going scene by scene, use the Entity Extraction Agent to extract entities (characters, settings, and objects), noting the point-of-view (POV) character, and their descriptions. The Entity Extraction Agent will match entities extracted through the scene being processed with those previously extracted. Use the Summarization Agent to merge new descriptions with previous descriptions, if a match is found. The entity record is updated with a list of scenes in which the entity is found, along with a POV character designation for each scene. Writes structured output to persistent storage.
+11.1.2.5.	Step 3: Going scene by scene, use the Summarization Agent to summarize each scene, and subsequent scene summaries are merged with the previous summary of the entire Narrative up to that scene. Writes structured output to persistent storage.
+11.1.2.6.	Step 4: PERHAPS insert entity descriptions and summaries into the RAG Tool, although the RAG Tool may not be needed at all. This structured data may simply be accessed and put into the prompt via the structured data. I would probably only use the RAG Tool if the Summarization Agent does a poor job of summarizing entity descriptions, in which case each description from each scene would be a vectorized document.
+11.1.2.7.	Step 5: From the author, include all input required for the Author Style Training Pipeline, as described in that agent below.
+11.1.2.8.	Step 6: Run the pipeline to fine-tune. Remember, when doing the actual generation of scenes, the above steps are not necessary.
+11.1.2.9.	Step 7: Given the fine-tuned weights, and all the input in the prompt, generate the next scene, which is both structured output and prose text. Of course, this is also written to persistent storage.
+11.1.2.10.	EVALUATION: Have an LLM and a human judge the faithfulness of the composed scene. That is, does the composed scene have any continuity errors, is it in the correct style, does it forward the Narrative well, does it obey the summary, is the first paragraph included accurately, does the story flow well from that paragraph, etc.?
