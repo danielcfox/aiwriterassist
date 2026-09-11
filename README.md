@@ -9,7 +9,7 @@ I developed a new architecture which is much more extensible and flexible. It ha
 
 1.	Orchestration Agent: executes specific use cases.
 1.1.	All use cases, though, need to involve a great deal of preprocessing of a Narrative. A Narrative is defined as the prose for a fictional story that may or may not encompasses one or more Books. A Book is simply a portion of the Narrative within a specific sequence of Books that form the entire Narrative.
-1.2.	A pre-defined set of use cases (like the Scene Generation use case above) would be a deterministic state machine. No sense in using an LLM where one is not required.
+1.2.	A pre-defined set of use cases would be a deterministic state machine. No sense in using an LLM where one is not required.
 1.3.	Other pre-defined use cases would be flagged as requiring an LLM to orchestrate.
 1.4.	User-created workflows asked for in a prompt would require an LLM to orchestrate.
 2.	Book Format Tool: Deterministic Python code specifically written for a given narrative (comprises several books in a series), or for a specific book. Each scene of the narrative (and it could be there are no scene breaks, but this is rare, and in this case it would be treated as one scene) would be treated as a separate document with an index indicating the order in the Narrative. If using a RAG, each scene would be chunked into multiple “scenes” with overlapped context if >10,000 words.
